@@ -1104,18 +1104,82 @@
   // manual-shift modal with its best guess so the user can quickly confirm or correct it,
   // rather than silently saving something it may have misread.
   const HEBREW_WEEKDAYS = { 'ראשון':0, 'שני':1, 'שלישי':2, 'רביעי':3, 'חמישי':4, 'שישי':5, 'שבת':6 };
+  const HEBREW_MONTHS = { 'ינואר':0, 'פברואר':1, 'מרץ':2, 'אפריל':3, 'מאי':4, 'יוני':5, 'יולי':6, 'אוגוסט':7, 'ספטמבר':8, 'אוקטובר':9, 'נובמבר':10, 'דצמבר':11 };
+  // Written-out ordinal day-of-month words ("הראשון ביולי", "העשרים ואחד באוגוסט") -
+  // listed longest-first so multi-word numbers like "עשרים ואחד" match before "עשרים" alone.
+  const HEBREW_DAY_ORDINALS = {
+    'עשרים ואחד':21, 'עשרים ושניים':22, 'עשרים ושלושה':23, 'עשרים וארבעה':24, 'עשרים וחמישה':25,
+    'עשרים ושישה':26, 'עשרים ושבעה':27, 'עשרים ושמונה':28, 'עשרים ותשעה':29,
+    'שלושים ואחד':31, 'שלושים':30, 'עשרים':20,
+    'אחד עשר':11, 'שנים עשר':12, 'שלושה עשר':13, 'ארבעה עשר':14, 'חמישה עשר':15,
+    'שישה עשר':16, 'שבעה עשר':17, 'שמונה עשר':18, 'תשעה עשר':19,
+    'ראשון':1, 'שני':2, 'שלישי':3, 'רביעי':4, 'חמישי':5, 'שישי':6, 'שביעי':7, 'שמיני':8, 'תשיעי':9, 'עשירי':10
+  };
+  // Default hour used when a period-of-day word appears with no explicit number
+  // attached (e.g. "עד הערב" instead of "עד 19:00").
+  const DEFAULT_PERIOD_HOUR = { morning:8, noon:13, afternoon:16, evening:19, night:22 };
 
-  function resolveBaseDate(text, now){
-    if(/שלשום/.test(text)){ const d=new Date(now); d.setDate(d.getDate()-2); d.setHours(0,0,0,0); return d; }
-    if(/אתמול|אמש/.test(text)){ const d=new Date(now); d.setDate(d.getDate()-1); d.setHours(0,0,0,0); return d; }
-    if(/מחר/.test(text)){ const d=new Date(now); d.setDate(d.getDate()+1); d.setHours(0,0,0,0); return d; }
+  // Period words are matched loosely by root (בוקר/צהר/ערב/לילה) rather than one fixed
+  // prefix, since common phrasings vary: "בבוקר", "מהבוקר", "הבוקר", "עד הערב", etc. all
+  // carry the same meaning. Afternoon-specific phrases are checked first since they also
+  // contain the "צהר" root and would otherwise be misread as plain noon.
+  function periodKind(period){
+    if(!period) return null;
+    if(/אחרי\s*הצהריים|אחר\s*הצהריים|אחה["׳״]?צ/.test(period)) return 'afternoon';
+    if(period.includes('בוקר')) return 'morning';
+    if(period.includes('צהר')) return 'noon';
+    if(period.includes('ערב')) return 'evening';
+    if(period.includes('לילה')) return 'night';
+    return null;
+  }
+
+  // Resolves the shift's date from the text AND returns the text with that date phrase
+  // removed - this matters for phrases like "21 ביולי" or "5 באוגוסט", where the day
+  // number would otherwise get misread later as one of the shift's clock hours.
+  function resolveDateAndClean(text, now){
+    if(/שלשום/.test(text)){
+      const d=new Date(now); d.setDate(d.getDate()-2); d.setHours(0,0,0,0);
+      return { date:d, cleaned: text.replace(/שלשום/,' ') };
+    }
+    if(/אתמול|אמש/.test(text)){
+      const d=new Date(now); d.setDate(d.getDate()-1); d.setHours(0,0,0,0);
+      return { date:d, cleaned: text.replace(/אתמול|אמש/,' ') };
+    }
+    if(/מחר/.test(text)){
+      const d=new Date(now); d.setDate(d.getDate()+1); d.setHours(0,0,0,0);
+      return { date:d, cleaned: text.replace(/מחר/,' ') };
+    }
+    // "העשרים ואחד ביולי" / "הראשון ביולי" - a written-out ordinal day name followed by
+    // a month name. Checked before the digit+month pattern below since there's no digit
+    // here at all. Requires the month name to actually follow, so it doesn't collide with
+    // "ביום שני" (Monday) elsewhere, which has no month name after it.
+    const monthNamesPattern = Object.keys(HEBREW_MONTHS).join('|');
+    const ordinalNamesPattern = Object.keys(HEBREW_DAY_ORDINALS).join('|');
+    const ord = text.match(new RegExp(`(?:ה)?(${ordinalNamesPattern})\\s*(?:ב|ל)?(${monthNamesPattern})`));
+    if(ord){
+      const day = HEBREW_DAY_ORDINALS[ord[1]];
+      const month = HEBREW_MONTHS[ord[2]];
+      let year = new Date(now).getFullYear();
+      const d = new Date(year, month, day);
+      if(!isNaN(d.getTime())) return { date:d, cleaned: text.replace(ord[0], ' ') };
+    }
+    // "21 ביולי" / "ב-21 ליולי" / "5 באוגוסט" - day number followed by a Hebrew month
+    // name (with an attached ב/ל prefix, e.g. "ביולי", "באוגוסט").
+    const mn = text.match(new RegExp(`(\\d{1,2})\\s*(?:ב|ל)?(${monthNamesPattern})`));
+    if(mn){
+      const day = parseInt(mn[1],10);
+      const month = HEBREW_MONTHS[mn[2]];
+      let year = new Date(now).getFullYear();
+      const d = new Date(year, month, day);
+      if(!isNaN(d.getTime())) return { date:d, cleaned: text.replace(mn[0], ' ') };
+    }
     const dm = text.match(/(\d{1,2})[\/\.](\d{1,2})(?:[\/\.](\d{2,4}))?/);
     if(dm){
       const day = parseInt(dm[1],10), month = parseInt(dm[2],10)-1;
       let year = new Date(now).getFullYear();
       if(dm[3]){ year = parseInt(dm[3],10); if(year<100) year += 2000; }
       const d = new Date(year, month, day);
-      if(!isNaN(d.getTime())) return d;
+      if(!isNaN(d.getTime())) return { date:d, cleaned: text.replace(dm[0], ' ') };
     }
     for(const name of Object.keys(HEBREW_WEEKDAYS)){
       if(text.includes(name)){
@@ -1124,19 +1188,20 @@
         const diff = (d.getDay() - dow + 7) % 7;
         d.setDate(d.getDate() - diff);
         d.setHours(0,0,0,0);
-        return d;
+        return { date:d, cleaned: text.replace(name, ' ') };
       }
     }
-    const d = new Date(now); d.setHours(0,0,0,0); return d; // default: today
+    const d = new Date(now); d.setHours(0,0,0,0);
+    return { date:d, cleaned: text }; // default: today
   }
 
   function applyPeriodWord(hour, period){
     if(!period) return { hour, ambiguous:true };
-    if(/בבוקר/.test(period)) return { hour: (hour===12?0:hour), ambiguous:false };
-    if(/בצהר/.test(period)) return { hour: (hour===12?12:hour+12), ambiguous:false };
-    if(/אחה|הצהריים/.test(period)) return { hour: (hour===12?12:hour+12), ambiguous:false };
-    if(/בערב/.test(period)) return { hour: (hour===12?12:(hour<=11?hour+12:hour)), ambiguous:false };
-    if(/בלילה/.test(period)){
+    if(/אחרי\s*הצהריים|אחר\s*הצהריים|אחה["׳״]?צ/.test(period)) return { hour: (hour===12?12:hour+12), ambiguous:false };
+    if(period.includes('בוקר')) return { hour: (hour===12?0:hour), ambiguous:false };
+    if(period.includes('צהר')) return { hour: (hour===12?12:hour+12), ambiguous:false };
+    if(period.includes('ערב')) return { hour: (hour===12?12:(hour<=11?hour+12:hour)), ambiguous:false };
+    if(period.includes('לילה')){
       if(hour===12) return { hour:0, ambiguous:false };
       if(hour>=1 && hour<=6) return { hour, ambiguous:false };
       return { hour: hour+12, ambiguous:false };
@@ -1144,32 +1209,126 @@
     return { hour, ambiguous:true };
   }
 
+  // Loose prefix so "בבוקר", "מהבוקר", "הבוקר", "לערב", "בלילה", "הלילה" etc. all match -
+  // Hebrew commonly fuses מ/ל/ב with a following ה, so the exact prefix varies.
+  const PREFIX = '(?:מה|לה|ב|מ|ל|ה)?';
+  const PERIOD_WORD_ALTERNATION =
+    `אחרי\\s*הצהריים|אחר\\s*הצהריים|אחה["׳״]?צ|${PREFIX}בוקר|${PREFIX}צהריים|${PREFIX}צהרים|${PREFIX}ערב|${PREFIX}לילה`;
+
   function extractTimeTokens(text){
+
     const cleaned = text.replace(/(\d{1,2})[\/\.](\d{1,2})(?:[\/\.](\d{2,4}))?/, ' ');
-    const re = /(\d{1,2})(?::(\d{2}))?\s*(בבוקר|בצהריים|בצהרים|אחרי\s+הצהריים|אחר\s+הצהריים|אחה["׳״]?צ|בערב|בלילה)?/g;
+    const numberedRe = new RegExp(`(\\d{1,2})(?::(\\d{2}))?\\s*(${PERIOD_WORD_ALTERNATION})?`, 'g');
     const out = [];
+    const consumed = []; // [start,end) spans already claimed by a numbered match
     let m;
-    while((m = re.exec(cleaned)) !== null){
+    while((m = numberedRe.exec(cleaned)) !== null){
       const hour = parseInt(m[1],10);
       if(isNaN(hour) || hour>24) continue;
-      out.push({ hour, minute: m[2]?parseInt(m[2],10):0, period: m[3]||null });
+      out.push({ hour, minute: m[2]?parseInt(m[2],10):0, period: m[3]||null, index:m.index });
+      consumed.push([m.index, m.index + m[0].length]);
     }
+    // Bare period words with no number attached at all (e.g. "עד הערב") - give them a
+    // sensible default hour so the person doesn't have to spell out an exact time.
+    const bareRe = new RegExp(PERIOD_WORD_ALTERNATION, 'g');
+    let bm;
+    while((bm = bareRe.exec(cleaned)) !== null){
+      const start = bm.index, end = bm.index + bm[0].length;
+      const insideNumbered = consumed.some(([cs,ce]) => start >= cs && start < ce);
+      if(insideNumbered) continue; // already captured above as part of a numbered token
+      const kind = periodKind(bm[0]);
+      if(!kind) continue;
+      out.push({ hour: DEFAULT_PERIOD_HOUR[kind], minute:0, period:bm[0], index:start, isDefaulted:true });
+    }
+    out.sort((a,b)=>a.index-b.index);
     return out;
   }
 
+  // ---------- typo tolerance ----------
+  // Corrects small spelling mistakes (missing/extra/swapped letter) in the Hebrew keywords
+  // the parser looks for - "אתמל" -> "אתמול", "שליש" -> "שלישי", "בבקר" -> "בוקר" etc. -
+  // by nudging each word toward the closest known vocabulary word, before the exact-match
+  // logic above runs. Left untouched: anything under 3 letters (too risky to "correct"
+  // short common words like "עד"/"את"), and non-Hebrew tokens (numbers, times, slashes).
+  function levenshtein(a, b){
+    if(a === b) return 0;
+    const al = a.length, bl = b.length;
+    if(al === 0) return bl;
+    if(bl === 0) return al;
+    let prev = Array.from({length: bl+1}, (_,j)=>j);
+    for(let i=1; i<=al; i++){
+      const cur = [i];
+      for(let j=1; j<=bl; j++){
+        cur[j] = a[i-1]===b[j-1] ? prev[j-1] : 1 + Math.min(prev[j-1], prev[j], cur[j-1]);
+      }
+      prev = cur;
+    }
+    return prev[bl];
+  }
+
+  const VOCAB_WORDS = Array.from(new Set([
+    ...Object.keys(HEBREW_WEEKDAYS),
+    ...Object.keys(HEBREW_MONTHS),
+    ...Object.keys(HEBREW_DAY_ORDINALS).flatMap(k=>k.split(' ')),
+    'אתמול','אמש','מחר','שלשום','היום',
+    'בוקר','צהריים','צהרים','ערב','לילה',
+    // definite-article forms recognized as-is (not "corrected" down to the bare root),
+    // since e.g. stripping the ה from "הצהריים" would break the "אחרי הצהריים" idiom
+    'הבוקר','הצהריים','הצהרים','הערב','הלילה'
+  ]));
+  // Common short connector words that must never be "corrected" into a vocabulary word,
+  // even if a false near-match happens to fall within the distance threshold.
+  const FUZZY_STOPWORDS = new Set(['עבדתי','משעה','בשעה','שעה','שעות','עד','גם','את','של','זה','אני','היה','היתה','בין','ועד','שעד']);
+
+  function fuzzyMatchWord(word){
+    if(word.length < 3) return null;
+    if(FUZZY_STOPWORDS.has(word)) return null;
+    if(VOCAB_WORDS.includes(word)) return word; // already correct, no change needed
+    const threshold = word.length <= 4 ? 1 : 2;
+    let best = null, bestDist = Infinity;
+    for(const v of VOCAB_WORDS){
+      if(Math.abs(v.length - word.length) > threshold) continue; // quick prune
+      const dist = levenshtein(word, v);
+      if(dist < bestDist){ bestDist = dist; best = v; }
+    }
+    return (best && bestDist <= threshold && bestDist > 0) ? best : null;
+  }
+
+  // Hebrew commonly fuses a one-letter prefix (מ/ל/ב/ה, or ה absorbed into מה/לה) directly
+  // onto the following word ("בבוקר", "מהערב") - so correction is tried both on the whole
+  // word and, separately, on the word with a leading prefix letter stripped off.
+  const FUZZY_PREFIXES = ['מה','לה','ב','מ','ל','ה'];
+
+  function fuzzyCorrectText(text){
+    return text.split(/(\s+)/).map(tok=>{
+      if(!/[א-ת]/.test(tok)) return tok; // numbers/times/punctuation - leave untouched
+      const direct = fuzzyMatchWord(tok);
+      if(direct) return direct;
+      for(const p of FUZZY_PREFIXES){
+        if(tok.startsWith(p) && tok.length > p.length + 2){
+          const corrected = fuzzyMatchWord(tok.slice(p.length));
+          if(corrected) return p + corrected;
+        }
+      }
+      return tok;
+    }).join('');
+  }
+
   function parseShiftText(text, now){
-    const baseDate = resolveBaseDate(text, now);
-    const tokens = extractTimeTokens(text);
+    text = fuzzyCorrectText(text);
+    const { date: baseDate, cleaned } = resolveDateAndClean(text, now);
+    const tokens = extractTimeTokens(cleaned);
     const confident = tokens.filter(t=>t.period);
     const pool = confident.length>=2 ? confident : tokens;
     if(pool.length<2) return null;
     const [t1, t2] = pool;
     const r1 = applyPeriodWord(t1.hour, t1.period);
     const r2 = applyPeriodWord(t2.hour, t2.period);
-    let h1 = r1.hour, h2 = r2.hour;
+    let h1 = t1.isDefaulted ? t1.hour : r1.hour;
+    let h2 = t2.isDefaulted ? t2.hour : r2.hour;
     // If the end time has no am/pm marker and, read literally, would fall before the start
     // time, it's almost always meant as PM (e.g. start "9" + end "5" -> 09:00-17:00).
-    if(r2.ambiguous && h2>=1 && h2<=11 && h2<=h1) h2 += 12;
+    if(!t2.isDefaulted && r2.ambiguous && h2>=1 && h2<=11 && h2<=h1) h2 += 12;
     const startDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), h1, t1.minute, 0, 0);
     const endDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), h2, t2.minute, 0, 0);
     if(endDate.getTime() <= startDate.getTime()) endDate.setDate(endDate.getDate()+1); // crosses midnight
@@ -1370,6 +1529,16 @@
     const endTimePart = (editEnd.value.split('T')[1]) || '00:00';
     editEnd.value = `${datePart}T${endTimePart}`;
   });
+  // Same in reverse: changing the end date auto-fills the same date on the start field too,
+  // so it works no matter which of the two fields the person happens to fill in first.
+  editEnd.addEventListener('input', ()=>{
+    if(modalMode !== 'manual') return;
+    const endVal = editEnd.value;
+    const datePart = endVal.split('T')[0];
+    if(!datePart) return;
+    const startTimePart = (editStart.value.split('T')[1]) || '00:00';
+    editStart.value = `${datePart}T${startTimePart}`;
+  });
 
   [editStart, editEnd, editRate, editMode, editTravel].forEach(el=>{
     el.addEventListener('input', updatePreview);
@@ -1489,6 +1658,15 @@
     const deduction = computeDeduction(totalWorkPay);
     const netTotal = (totalWorkPay - deduction) + totalTravel;
 
+    // Broken out separately (not folded into the plain "regular hours" total) so overtime
+    // and Shabbat hours are visible in addition to, not merged with, the regular hours.
+    const totalRegularHours = monthShifts.reduce((a,s)=>a+s.regularHours,0);
+    const totalOt125Hours = monthShifts.reduce((a,s)=>a+s.ot125Hours,0);
+    const totalWeekendHours = monthShifts.reduce((a,s)=>a+s.weekendHours,0);
+    const regularPay = monthShifts.reduce((a,s)=>a+s.regularHours*(s.rate!=null?s.rate:state.rate),0);
+    const ot125Pay = monthShifts.reduce((a,s)=>a+s.ot125Hours*(s.rate!=null?s.rate:state.rate)*1.25,0);
+    const weekendPay = monthShifts.reduce((a,s)=>a+s.weekendHours*(s.rate!=null?s.rate:state.rate)*1.5,0);
+
     const rows = monthShifts.map(s=>{
       const d = new Date(s.start);
       const dayName = DOW[d.getDay()];
@@ -1534,6 +1712,9 @@
         <div class="totals">
           <table>
             <tr><td>סה"כ שעות עבודה</td><td>${fmtHours(totalHours)}</td></tr>
+            <tr><td>מתוכן שעות רגילות (100%)</td><td>${fmtHours(totalRegularHours)} · ${fmtMoney(regularPay)}</td></tr>
+            ${totalOt125Hours > 0.005 ? `<tr><td>מתוכן שעות נוספות (125%)</td><td>${fmtHours(totalOt125Hours)} · ${fmtMoney(ot125Pay)}</td></tr>` : ''}
+            ${totalWeekendHours > 0.005 ? `<tr><td>מתוכן שעות שבת/סופ"ש (150%)</td><td>${fmtHours(totalWeekendHours)} · ${fmtMoney(weekendPay)}</td></tr>` : ''}
             <tr><td>שכר עבודה (ברוטו)</td><td>${fmtMoney(totalWorkPay)}</td></tr>
             <tr><td>החזר נסיעות (פטור)</td><td>${fmtMoney(totalTravel)}</td></tr>
             <tr><td>סה"כ ברוטו</td><td>${fmtMoney(grossTotal)}</td></tr>
