@@ -418,6 +418,30 @@
     .shift-row{ flex-wrap:wrap; }
     .shift-row .mid{ order:3; width:100%; text-align:right; margin-top:6px; }
   }
+
+  /* ---------- payslip (printable) ---------- */
+  #payslipPrintArea{ display:none; }
+  .payslip{ font-family:'Heebo',sans-serif; direction:rtl; color:#1B2430; background:#fff; padding:28px; }
+  .payslip h1{ font-size:20px; margin:0 0 2px; }
+  .payslip .sub{ font-size:12px; color:#6B7280; margin-bottom:18px; }
+  .payslip .meta-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 20px; font-size:13px; margin-bottom:18px; }
+  .payslip .meta-grid div span{ color:#6B7280; }
+  .payslip table{ width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:18px; }
+  .payslip th, .payslip td{ border:1px solid #E7E2D9; padding:6px 5px; text-align:center; }
+  .payslip th{ background:#E4F1EE; color:#242F3F; font-weight:700; }
+  .payslip tfoot td{ font-weight:700; background:#FAF7F2; }
+  .payslip .totals{ display:flex; justify-content:flex-end; margin-top:6px; }
+  .payslip .totals table{ width:280px; margin-bottom:0; }
+  .payslip .totals td:first-child{ text-align:right; color:#6B7280; }
+  .payslip .totals td:last-child{ text-align:left; font-weight:700; }
+  .payslip .net-row td{ background:#E4F1EE; color:#2F7A6D; font-weight:900; font-size:14px; }
+  .payslip .disclaimer{ font-size:10px; color:#6B7280; margin-top:22px; border-top:1px solid #E7E2D9; padding-top:10px; }
+
+  @media print{
+    body > *:not(#payslipPrintArea){ display:none !important; }
+    #payslipPrintArea{ display:block !important; }
+    @page{ size:A4; margin:14mm; }
+  }
 </style>
 </head>
 <body>
@@ -477,6 +501,7 @@
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">
       חישוב הנטו כולל ביטוח לאומי ומס בריאות בלבד, ללא מס הכנסה ונקודות זיכוי – לצורך הערכה בלבד.
     </div>
+    <button class="btn primary" id="exportPayslipBtn" style="width:100%;margin-top:14px;">🧾 הפקת תלוש לחודש זה (PDF)</button>
   </section>
 
   <section>
@@ -541,6 +566,14 @@
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal">
     <h3>הגדרות</h3>
+    <div class="field">
+      <label>שם העובד/ת (יופיע בתלוש, אופציונלי)</label>
+      <input type="text" id="settingsEmployeeName" placeholder="לדוגמה: ישראל ישראלי">
+    </div>
+    <div class="field">
+      <label>שם המעסיק / העסק (יופיע בתלוש, אופציונלי)</label>
+      <input type="text" id="settingsEmployerName" placeholder="לדוגמה: קפה השכונה בע\"מ">
+    </div>
     <div class="field">
       <label>תעריף שעתי בסיס (₪)</label>
       <input type="number" id="settingsRate" min="0" step="0.5">
@@ -634,11 +667,13 @@
           city: parsed.city || 'jerusalem',
           shabbatCache: parsed.shabbatCache || {}, // { 'YYYY-MM-DD' (Friday): {candle: ms, havdalah: ms} }
           shifts: Array.isArray(parsed.shifts) ? parsed.shifts : [],
-          activeStart: parsed.activeStart || null
+          activeStart: parsed.activeStart || null,
+          employeeName: parsed.employeeName || '',
+          employerName: parsed.employerName || ''
         };
       }
     }catch(e){ console.warn('Could not parse saved data', e); }
-    return { rate:DEFAULT_MIN_WAGE, travelRate:DEFAULT_TRAVEL, shabbatStart:DEFAULT_SHABBAT_START, shabbatEnd:DEFAULT_SHABBAT_END, autoShabbat:false, city:'jerusalem', shabbatCache:{}, shifts:[], activeStart:null };
+    return { rate:DEFAULT_MIN_WAGE, travelRate:DEFAULT_TRAVEL, shabbatStart:DEFAULT_SHABBAT_START, shabbatEnd:DEFAULT_SHABBAT_END, autoShabbat:false, city:'jerusalem', shabbatCache:{}, shifts:[], activeStart:null, employeeName:'', employerName:'' };
   }
 
   function saveState(){
@@ -931,6 +966,8 @@
   const settingsBtn = document.getElementById('settingsBtn');
   const rateBtnLabel = document.getElementById('rateBtnLabel');
   const settingsOverlay = document.getElementById('settingsOverlay');
+  const settingsEmployeeName = document.getElementById('settingsEmployeeName');
+  const settingsEmployerName = document.getElementById('settingsEmployerName');
   const settingsRate = document.getElementById('settingsRate');
   const settingsTravel = document.getElementById('settingsTravel');
   const settingsShabbatStart = document.getElementById('settingsShabbatStart');
@@ -991,6 +1028,8 @@
   const autoShabbatRetry = document.getElementById('autoShabbatRetry');
 
   settingsBtn.addEventListener('click', ()=>{
+    settingsEmployeeName.value = state.employeeName || '';
+    settingsEmployerName.value = state.employerName || '';
     settingsRate.value = state.rate;
     settingsTravel.value = state.travelRate;
     settingsShabbatStart.value = timeToStr(state.shabbatStart);
@@ -1012,6 +1051,8 @@
     ensureUpcomingShabbatCached(true);
   });
   settingsSave.addEventListener('click', ()=>{
+    state.employeeName = settingsEmployeeName.value.trim();
+    state.employerName = settingsEmployerName.value.trim();
     const r = parseFloat(settingsRate.value);
     const t = parseFloat(settingsTravel.value);
     if(!isNaN(r) && r>=0) state.rate = r;
@@ -1417,6 +1458,96 @@
   }
   monthSelect.addEventListener('change', renderSummary);
 
+  // ---------- payslip export (PDF via browser print) ----------
+  const exportPayslipBtn = document.getElementById('exportPayslipBtn');
+  const payslipPrintArea = document.getElementById('payslipPrintArea');
+
+  function modeLabel(mode, s){
+    if(s.weekendHours > 0.005) return 'שבת/סופ"ש';
+    if(mode === 'weekend') return 'סופ"ש';
+    if(mode === 'regular') return 'רגיל (כפוי)';
+    return 'רגיל';
+  }
+
+  function buildPayslipHtml(selKey){
+    const monthShifts = state.shifts
+      .filter(s=>monthKey(s.start) === selKey)
+      .slice()
+      .sort((a,b)=>a.start-b.start);
+
+    const totalHours = monthShifts.reduce((a,s)=>a+s.totalHours,0);
+    const totalWorkPay = monthShifts.reduce((a,s)=>a+s.pay,0);
+    const totalTravel = monthShifts.reduce((a,s)=>a+(s.travel||0),0);
+    const grossTotal = totalWorkPay + totalTravel;
+    const deduction = computeDeduction(totalWorkPay);
+    const netTotal = (totalWorkPay - deduction) + totalTravel;
+
+    const rows = monthShifts.map(s=>{
+      const d = new Date(s.start);
+      const dayName = DOW[d.getDay()];
+      const hrsBreak = [];
+      if(s.regularHours > 0.005) hrsBreak.push(`${fmtHours(s.regularHours)} רגיל`);
+      if(s.ot125Hours > 0.005) hrsBreak.push(`${fmtHours(s.ot125Hours)} נוספ' 125%`);
+      if(s.weekendHours > 0.005) hrsBreak.push(`${fmtHours(s.weekendHours)} שבת 150%`);
+      return `<tr>
+        <td>${dayName} ${fmtDate(s.start)}</td>
+        <td>${fmtTime(s.start)}</td>
+        <td>${fmtTime(s.end)}</td>
+        <td>${fmtHours(s.totalHours)}</td>
+        <td style="font-size:10px;">${hrsBreak.join('<br>') || '—'}</td>
+        <td>₪${(s.rate!=null?s.rate:state.rate).toFixed(2)}</td>
+        <td>${fmtMoney(s.pay + (s.travel||0))}</td>
+      </tr>`;
+    }).join('');
+
+    const today = new Date();
+    const employeeName = (state.employeeName||'').trim();
+    const employerName = (state.employerName||'').trim();
+
+    return `
+      <div class="payslip">
+        <h1>תלוש שכר – ${monthLabel(selKey)}</h1>
+        <div class="sub">הופק בתאריך ${fmtDate(today.getTime())}</div>
+        <div class="meta-grid">
+          <div><span>שם העובד/ת: </span>${employeeName || '—'}</div>
+          <div><span>מעסיק/עסק: </span>${employerName || '—'}</div>
+          <div><span>תקופה: </span>${monthLabel(selKey)}</div>
+          <div><span>מספר משמרות: </span>${monthShifts.length}</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>תאריך</th><th>כניסה</th><th>יציאה</th><th>סה"כ שעות</th><th>פירוט שעות</th><th>תעריף</th><th>סה"כ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="7">אין משמרות רשומות לתקופה זו</td></tr>'}
+          </tbody>
+        </table>
+        <div class="totals">
+          <table>
+            <tr><td>סה"כ שעות עבודה</td><td>${fmtHours(totalHours)}</td></tr>
+            <tr><td>שכר עבודה (ברוטו)</td><td>${fmtMoney(totalWorkPay)}</td></tr>
+            <tr><td>החזר נסיעות (פטור)</td><td>${fmtMoney(totalTravel)}</td></tr>
+            <tr><td>סה"כ ברוטו</td><td>${fmtMoney(grossTotal)}</td></tr>
+            <tr><td>ניכוי ביטוח לאומי + בריאות</td><td>-${fmtMoney(deduction)}</td></tr>
+            <tr class="net-row"><td>נטו לתשלום</td><td>${fmtMoney(netTotal)}</td></tr>
+          </table>
+        </div>
+        <div class="disclaimer">
+          מסמך זה הופק אוטומטית לצורך מעקב אישי על סמך משמרות שנרשמו באפליקציה בלבד. החישוב כולל ביטוח לאומי ומס בריאות בלבד (ללא מס הכנסה ונקודות זיכוי), ואינו מהווה תלוש שכר רשמי/חוקי מטעם מעסיק ואינו תחליף לתלוש המונפק על ידי מערכת שכר מוסמכת.
+        </div>
+      </div>
+    `;
+  }
+
+  exportPayslipBtn.addEventListener('click', ()=>{
+    const selKey = monthSelect.value || monthKey(Date.now());
+    payslipPrintArea.innerHTML = buildPayslipHtml(selKey);
+    window.print();
+  });
+  window.addEventListener('afterprint', ()=>{ payslipPrintArea.innerHTML = ''; });
+
   function renderAll(){
     renderHistory();
     renderSummary();
@@ -1429,5 +1560,6 @@
   renderAll();
 })();
 </script>
+<div id="payslipPrintArea"></div>
 </body>
 </html>
