@@ -15,6 +15,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --ink:#1B2430;
@@ -419,8 +421,11 @@
     .shift-row .mid{ order:3; width:100%; text-align:right; margin-top:6px; }
   }
 
-  /* ---------- payslip (printable) ---------- */
-  #payslipPrintArea{ display:none; }
+  /* ---------- payslip (rendered off-screen, captured to an actual PDF file) ---------- */
+  /* Positioned off-screen (not display:none) so html2canvas can still render it correctly;
+     window.print() is unreliable inside an installed home-screen app on many phones, so the
+     payslip is instead captured to an image and saved as a real downloadable .pdf file. */
+  #payslipPrintArea{ position:fixed; top:0; left:-11000px; width:794px; background:#fff; }
   .payslip{ font-family:'Heebo',sans-serif; direction:rtl; color:#1B2430; background:#fff; padding:28px; }
   .payslip h1{ font-size:20px; margin:0 0 2px; }
   .payslip .sub{ font-size:12px; color:#6B7280; margin-bottom:18px; }
@@ -436,12 +441,6 @@
   .payslip .totals td:last-child{ text-align:left; font-weight:700; }
   .payslip .net-row td{ background:#E4F1EE; color:#2F7A6D; font-weight:900; font-size:14px; }
   .payslip .disclaimer{ font-size:10px; color:#6B7280; margin-top:22px; border-top:1px solid #E7E2D9; padding-top:10px; }
-
-  @media print{
-    body > *:not(#payslipPrintArea){ display:none !important; }
-    #payslipPrintArea{ display:block !important; }
-    @page{ size:A4; margin:14mm; }
-  }
 </style>
 </head>
 <body>
@@ -502,6 +501,7 @@
       חישוב הנטו כולל ביטוח לאומי ומס בריאות בלבד, ללא מס הכנסה ונקודות זיכוי – לצורך הערכה בלבד.
     </div>
     <button class="btn primary" id="exportPayslipBtn" style="width:100%;margin-top:14px;">🧾 הפקת תלוש לחודש זה (PDF)</button>
+    <div id="payslipStatus" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;"></div>
   </section>
 
   <section>
@@ -633,6 +633,8 @@
     </div>
   </div>
 </div>
+
+<div id="payslipPrintArea"></div>
 
 <script>
 (function(){
@@ -1460,6 +1462,7 @@
 
   // ---------- payslip export (PDF via browser print) ----------
   const exportPayslipBtn = document.getElementById('exportPayslipBtn');
+  const payslipStatus = document.getElementById('payslipStatus');
   const payslipPrintArea = document.getElementById('payslipPrintArea');
 
   function modeLabel(mode, s){
@@ -1541,12 +1544,80 @@
     `;
   }
 
-  exportPayslipBtn.addEventListener('click', ()=>{
+  exportPayslipBtn.addEventListener('click', async ()=>{
     const selKey = monthSelect.value || monthKey(Date.now());
+    const originalLabel = exportPayslipBtn.textContent;
+    exportPayslipBtn.textContent = 'מכין PDF…';
+    exportPayslipBtn.disabled = true;
+    payslipStatus.innerHTML = '';
+    payslipStatus.style.color = 'var(--muted)';
     payslipPrintArea.innerHTML = buildPayslipHtml(selKey);
-    window.print();
+    try{
+      if(typeof html2canvas === 'undefined' || !window.jspdf){
+        throw new Error('הספריות הדרושות להפקת ה-PDF לא נטענו (בדוק חיבור לאינטרנט ונסה שוב).');
+      }
+      // Give the browser a moment to lay out/paint the off-screen content and load fonts
+      // before capturing it, otherwise the canvas can come out blank or mid-render.
+      if(document.fonts && document.fonts.ready) await document.fonts.ready;
+      await new Promise(r=>setTimeout(r, 60));
+
+      const target = payslipPrintArea.querySelector('.payslip');
+      const canvas = await html2canvas(target, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+      const imgData = canvas.toDataURL('image/png');
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      // If the payslip is taller than one A4 page (many shifts), continue on extra pages.
+      while(heightLeft > 0){
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const filename = `תלוש-${selKey}.pdf`;
+
+      // The automatic save() trigger relies on a synchronous user-gesture window that some
+      // standalone/home-screen apps close by the time this async work finishes - it can then
+      // fail completely silently (no error, nothing downloads). So we always ALSO show a real
+      // tappable link below: a direct tap is a fresh, guaranteed-valid user gesture regardless
+      // of how long the PDF took to generate.
+      let autoSaveFailed = false;
+      try{ pdf.save(filename); }catch(saveErr){ console.warn('Automatic PDF save failed', saveErr); autoSaveFailed = true; }
+
+      const blobUrl = URL.createObjectURL(pdf.output('blob'));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.textContent = '📥 התלוש מוכן — הקש כאן לפתיחה/הורדה';
+      link.style.cssText = 'display:inline-block;margin-top:4px;color:var(--teal);font-weight:700;text-decoration:underline;';
+      payslipStatus.innerHTML = '';
+      payslipStatus.appendChild(link);
+      if(autoSaveFailed){
+        const note = document.createElement('div');
+        note.style.marginTop = '4px';
+        note.textContent = 'ההורדה האוטומטית לא בוצעה - השתמש בקישור שלמעלה.';
+        payslipStatus.appendChild(note);
+      }
+    }catch(err){
+      console.warn('Payslip PDF generation failed', err);
+      payslipStatus.textContent = 'הפקת ה-PDF נכשלה: ' + ((err && err.message) || err) + ' — יש לוודא חיבור לאינטרנט ולנסות שוב.';
+      payslipStatus.style.color = 'var(--danger)';
+    }finally{
+      payslipPrintArea.innerHTML = '';
+      exportPayslipBtn.textContent = originalLabel;
+      exportPayslipBtn.disabled = false;
+    }
   });
-  window.addEventListener('afterprint', ()=>{ payslipPrintArea.innerHTML = ''; });
 
   function renderAll(){
     renderHistory();
@@ -1560,6 +1631,5 @@
   renderAll();
 })();
 </script>
-<div id="payslipPrintArea"></div>
 </body>
 </html>
