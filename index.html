@@ -514,7 +514,7 @@
       <button class="icon-btn" id="addManualBtn" title="הוספת משמרת ידנית" style="width:auto;padding:0 10px;font-size:12px;font-weight:700;color:var(--ink);">+ הוספה ידנית</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:6px;">
-      <input type="text" id="quickAddText" placeholder="לדוגמה: עבדתי אתמול מ-9 בבוקר עד 5 אחה&quot;צ" style="flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink);">
+      <input type="text" id="quickAddText" placeholder="לדוגמה: אתמול מ-9 בבוקר עד 5, היום מ-14 עד 22" style="flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink);">
       <button class="btn ghost" id="quickAddBtn" style="white-space:nowrap;padding:0 14px;">✨ פענח</button>
     </div>
     <div id="quickAddStatus" style="font-size:11px;color:var(--muted);margin-bottom:14px;"></div>
@@ -1340,20 +1340,75 @@
     return { startMs: startDate.getTime(), endMs: endDate.getTime() };
   }
 
+  // Splits free text into separate shift descriptions when the person lists more than one
+  // in the same message - e.g. "אתמול מ-9 עד 17, היום מ-14 עד 22" or one shift per line.
+  function splitIntoShiftSegments(text){
+    // Note: \b word-boundary doesn't work here since JS regex treats \w as ASCII-only,
+    // so Hebrew letters never register a boundary - "וגם"/"ו" must be matched via
+    // surrounding whitespace instead. Only a standalone "ו" (its own word, spaces on both
+    // sides) counts as a separator - "ו" fused onto the next word ("והיום") is left alone,
+    // since that's normal Hebrew and not a list separator.
+    return text.split(/\n|;|,|\sוגם\s|\sו\s/).map(s=>s.trim()).filter(Boolean);
+  }
+
+  function addParsedShift(result){
+    const rate = state.rate;
+    const travel = state.travelRate;
+    const mode = 'auto';
+    const r = computePay(result.startMs, result.endMs, rate, mode);
+    state.shifts.unshift({
+      id: 's'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      start: result.startMs, end: result.endMs, rate, mode, travel,
+      regularHours: r.regularHours, ot125Hours: r.ot125Hours,
+      ot150Hours: r.ot150Hours, weekendHours: r.weekendHours,
+      totalHours: r.totalHours, pay: r.pay
+    });
+  }
+
   function runQuickAdd(){
     const text = quickAddText.value.trim();
     if(!text){
       quickAddStatus.textContent = 'צריך לכתוב קודם מתי המשמרת התחילה ונגמרה.';
       return;
     }
-    const result = parseShiftText(text, Date.now());
-    if(!result || result.endMs <= result.startMs){
+    const segments = splitIntoShiftSegments(text);
+    const results = [];
+    let failedCount = 0;
+    segments.forEach(seg=>{
+      const r = parseShiftText(seg, Date.now());
+      if(r && r.endMs > r.startMs) results.push(r); else failedCount++;
+    });
+
+    if(results.length === 0){
       quickAddStatus.textContent = 'לא הצלחתי לזהות שעות ברורות. נסה למשל "אתמול מ-9 בבוקר עד 17:00", או השתמש בהוספה הידנית למטה.';
       return;
     }
-    const sameDay = new Date(result.startMs).toDateString() === new Date(result.endMs).toDateString();
-    quickAddStatus.textContent = `זיהיתי: ${fmtDate(result.startMs)} ${fmtTime(result.startMs)} עד ${sameDay?'':fmtDate(result.endMs)+' '}${fmtTime(result.endMs)} — אפשר לתקן בטופס שנפתח לפני השמירה.`;
-    openShiftModal('manual', null, result.startMs, result.endMs);
+
+    if(results.length === 1 && failedCount === 0){
+      // Single shift - keep the existing flow: open the form pre-filled for a quick review
+      // before saving, since that's a cheap extra step when there's only one to check.
+      const result = results[0];
+      const sameDay = new Date(result.startMs).toDateString() === new Date(result.endMs).toDateString();
+      quickAddStatus.textContent = `זיהיתי: ${fmtDate(result.startMs)} ${fmtTime(result.startMs)} עד ${sameDay?'':fmtDate(result.endMs)+' '}${fmtTime(result.endMs)} — אפשר לתקן בטופס שנפתח לפני השמירה.`;
+      openShiftModal('manual', null, result.startMs, result.endMs);
+      return;
+    }
+
+    // Multiple shifts in one line - opening a review form for each one would be tedious,
+    // so they're added directly (with the default rate/travel/classification) and summarized;
+    // each one can still be edited or deleted individually from the history list below.
+    results.forEach(addParsedShift);
+    saveState();
+    renderAll();
+    const summary = results.map(r=>{
+      const sameDay = new Date(r.startMs).toDateString() === new Date(r.endMs).toDateString();
+      return `${fmtDate(r.startMs)} ${fmtTime(r.startMs)}–${sameDay?'':fmtDate(r.endMs)+' '}${fmtTime(r.endMs)}`;
+    }).join(' · ');
+    let msg = `נוספו ${results.length} משמרות: ${summary}.`;
+    if(failedCount > 0) msg += ` (${failedCount} חלק${failedCount>1?'ים':''} בטקסט לא זוהו ולא נוספו)`;
+    msg += ' אפשר לערוך או למחוק כל אחת בנפרד מההיסטוריה למטה.';
+    quickAddStatus.textContent = msg;
+    quickAddText.value = '';
   }
 
   quickAddBtn.addEventListener('click', runQuickAdd);
