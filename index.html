@@ -936,7 +936,12 @@
     const s = total%60;
     return `${pad(h)}:${pad(m)}:${pad(s)}`;
   }
-  function fmtHours(h){ return h.toFixed(2); }
+  function fmtHours(h){
+    const totalMinutes = Math.round(h * 60);
+    const hh = Math.floor(totalMinutes / 60);
+    const mm = totalMinutes % 60;
+    return `${hh}:${pad(mm)}`;
+  }
   function fmtMoney(v){
     return '₪' + v.toLocaleString('he-IL', {maximumFractionDigits:2, minimumFractionDigits:2});
   }
