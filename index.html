@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-<!-- ספרייה להורדת PDF ישירה ללא חלון הדפסה -->
+<!-- ספרייה להורדת PDF ישירה -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
@@ -26,6 +26,15 @@
     --danger:#C4453A;
     --danger-light:#FBEAE8;
     --radius:16px;
+  }
+  :root.dark{
+    --ink:#ECEDEF;
+    --cream:#14181F;
+    --card:#1E2733;
+    --muted:#8B96A5;
+    --line:#2B3542;
+    --teal-light:#1B3730;
+    --danger-light:#3A2220;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -151,7 +160,7 @@
   .modal-overlay.open{ display:flex; }
   .modal{
     background:var(--cream); width:100%; max-width:480px; max-height:85vh; overflow-y:auto;
-    border-radius:20px 20px 0 0; padding:22px 20px 26px;
+    border-radius:20px 20px 0 0; padding:22px 20px 26px; color:var(--ink);
   }
   @media (min-width:600px){ .modal-overlay{ align-items:center; } .modal{ border-radius:20px; } }
   .field{ margin-bottom:14px; }
@@ -160,6 +169,7 @@
     width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
     font-family:'JetBrains Mono',monospace; font-size:14px; background:var(--card); color:var(--ink);
   }
+  .field select{ font-family:'Heebo',sans-serif; font-size:13px; }
 
   .btn{
     flex:1; padding:12px; border-radius:12px; border:none; font-family:'Heebo',sans-serif;
@@ -179,8 +189,8 @@
 
   .pdf-template {
     width: 800px;
-    background: #ffffff;
-    color: #111111;
+    background: #ffffff !important;
+    color: #111111 !important;
     font-family: 'Heebo', sans-serif;
     padding: 40px;
     direction: rtl;
@@ -192,11 +202,11 @@
   .pdf-title { font-size: 24px; font-weight: 900; margin: 0; color: #111; }
   .pdf-sub { font-size: 14px; color: #555; margin-top: 4px; }
   .pdf-meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-  .pdf-meta-table td { padding: 8px 12px; border: 1px solid #ddd; background: #fdfdfd; }
+  .pdf-meta-table td { padding: 8px 12px; border: 1px solid #ddd; background: #fdfdfd; color: #111; }
   .pdf-meta-table td.lbl { font-weight: 700; background: #f0f0f0; width: 18%; }
 
   .pdf-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
-  .pdf-table th, .pdf-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  .pdf-table th, .pdf-table td { border: 1px solid #ccc; padding: 8px; text-align: center; color: #111; }
   .pdf-table th { background: #f2f2f2; font-weight: 700; color: #111; }
   .pdf-table tr:nth-child(even) { background: #fafafa; }
 
@@ -204,7 +214,7 @@
     display: flex; justify-content: flex-end; gap: 15px; margin-top: 20px;
   }
   .pdf-sum-card {
-    border: 1px solid #111; padding: 10px 16px; border-radius: 6px; text-align: center; min-width: 130px; background: #fff;
+    border: 1px solid #111; padding: 10px 16px; border-radius: 6px; text-align: center; min-width: 130px; background: #fff; color: #111;
   }
   .pdf-sum-card .v { font-size: 16px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
   .pdf-sum-card .l { font-size: 11px; color: #444; margin-top: 2px; }
@@ -304,6 +314,10 @@
     <div class="field">
       <label>נסיעות למשמרת (₪)</label>
       <input type="number" id="settingsTravel" min="0" step="0.5">
+    </div>
+    <div class="field" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="settingsDarkMode" style="width:18px;height:18px;flex-shrink:0;">
+      <label for="settingsDarkMode" style="margin:0;font-size:13px;color:var(--ink);">🌙 מצב כהה</label>
     </div>
     <div class="modal-actions" style="display:flex;gap:10px;margin-top:18px;">
       <button class="btn ghost" id="settingsCancel">ביטול</button>
@@ -407,14 +421,19 @@
           shifts: Array.isArray(parsed.shifts) ? parsed.shifts : [],
           activeStart: parsed.activeStart || null,
           employeeName: parsed.employeeName || '',
-          employerName: parsed.employerName || ''
+          employerName: parsed.employerName || '',
+          darkMode: !!parsed.darkMode
         };
       }
     }catch(e){}
-    return { rate:DEFAULT_MIN_WAGE, travelRate:DEFAULT_TRAVEL, shifts:[], activeStart:null, employeeName:'', employerName:'' };
+    return { rate:DEFAULT_MIN_WAGE, travelRate:DEFAULT_TRAVEL, shifts:[], activeStart:null, employeeName:'', employerName:'', darkMode:false };
   }
 
   function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function applyTheme(){
+    document.documentElement.classList.toggle('dark', !!state.darkMode);
+  }
 
   function computeDeduction(grossWork){
     const lowPart = Math.min(grossWork, NI_THRESHOLD);
@@ -524,22 +543,34 @@
   const settingsBtn = document.getElementById('settingsBtn');
   const settingsOverlay = document.getElementById('settingsOverlay');
   const monthSelect = document.getElementById('monthSelect');
+  const settingsDarkMode = document.getElementById('settingsDarkMode');
 
   settingsBtn.addEventListener('click', ()=>{
     document.getElementById('settingsEmployeeName').value = state.employeeName;
     document.getElementById('settingsEmployerName').value = state.employerName;
     document.getElementById('settingsRate').value = state.rate;
     document.getElementById('settingsTravel').value = state.travelRate;
+    settingsDarkMode.checked = !!state.darkMode;
     settingsOverlay.classList.add('open');
   });
 
-  document.getElementById('settingsCancel').addEventListener('click', ()=> settingsOverlay.classList.remove('open'));
+  settingsDarkMode.addEventListener('change', ()=>{
+    document.documentElement.classList.toggle('dark', settingsDarkMode.checked);
+  });
+
+  document.getElementById('settingsCancel').addEventListener('click', ()=>{
+    settingsOverlay.classList.remove('open');
+    applyTheme();
+  });
+
   document.getElementById('settingsSave').addEventListener('click', ()=>{
     state.employeeName = document.getElementById('settingsEmployeeName').value.trim();
     state.employerName = document.getElementById('settingsEmployerName').value.trim();
     state.rate = parseFloat(document.getElementById('settingsRate').value) || DEFAULT_MIN_WAGE;
     state.travelRate = parseFloat(document.getElementById('settingsTravel').value) || DEFAULT_TRAVEL;
+    state.darkMode = settingsDarkMode.checked;
     saveState();
+    applyTheme();
     settingsOverlay.classList.remove('open');
     renderAll();
   });
@@ -592,6 +623,7 @@
     renderHistory();
   }
 
+  applyTheme();
   monthSelect.addEventListener('change', renderAll);
   renderAll();
 })();
