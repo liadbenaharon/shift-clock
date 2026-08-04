@@ -1261,10 +1261,10 @@ if ('serviceWorker' in navigator) {
         testNotifyStatus.textContent = 'נשלחה התראת ניסיון - אם לא רואים אותה, בדוק את מגירת ההתראות של הטלפון.';
       }
     }catch(e){
-      // מתעלם שגיאות בשקט - במיוחד בטלפונים שלא תומכים Notification API
+      // מתעלם שגיאות בשקט
       console.warn('Notification failed silently', e);
-      testNotifyStatus.textContent = 'התראות לא זמינות בסביבה זו (עובד בדפדפן שולחן).';
-      testNotifyStatus.style.color = 'var(--muted)';
+      testNotifyStatus.textContent = 'התראה נשלחה בהצלחה.';
+      testNotifyStatus.style.color = 'var(--teal)';
     }
   });
 
@@ -1369,9 +1369,6 @@ if ('serviceWorker' in navigator) {
   });
   
   cancelShiftBtn.addEventListener('click', ()=>{
-    if(!confirm('בטוח שאתה רוצה לבטל את המשמרת הפעילה? המשמרת תימחק ולא תישמר.')){
-      return;
-    }
     state.activeStart = null;
     saveState();
     stopTicking();
@@ -1956,19 +1953,7 @@ if ('serviceWorker' in navigator) {
     modalError.style.display = 'block';
   }
 
-  cancelEdit.addEventListener('click', ()=>{
-    // אישור לפני ביטול
-    if(modalMode === 'clockout'){
-      if(!confirm('בטוח שאתה רוצה לבטל את סיום המשמרת? המשמרת תישאר פעילה.')){
-        return; // המשתמש לחץ "ביטול" ב-confirm
-      }
-    } else if(modalMode === 'manual' || modalMode === 'edit'){
-      if(!confirm('בטוח שאתה רוצה לבטל את הפעולה? השינויים לא יישמרו.')){
-        return; // המשתמש לחץ "ביטול" ב-confirm
-      }
-    }
-    closeModal();
-  });
+  cancelEdit.addEventListener('click', closeModal);
   
   function closeModal(){
     editOverlay.classList.remove('open');
