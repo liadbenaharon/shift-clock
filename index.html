@@ -520,7 +520,7 @@
     <div class="history-list" id="historyList"></div>
   </section>
 
-  <footer class="note">הנתונים נשמרים באופן מקומי בדפדפן שלכם בלבד (localStorage)</footer>
+  <footer class="note">⚠️ חשוב: הנתונים נשמרים באופן מקומי בדפדפן שלכם בלבד (localStorage). מומלץ לעשות גיבוי תכוף כדי לא לאבד נתונים!</footer>
 </div>
 
 <!-- Edit modal -->
@@ -684,6 +684,27 @@
   const NI_RATE_LOW = 0.0427;
   const NI_RATE_HIGH = 0.1217;
 
+  // בדיקת תאימות דפדפן בסיסית
+  function checkBrowserCompatibility(){
+    const issues = [];
+    
+    if(typeof localStorage === 'undefined'){
+      issues.push('הדפדפן שלך לא תומך בשמירת נתונים מקומית. הנתונים לא יישמרו.');
+    }
+    
+    if(typeof Notification === 'undefined'){
+      // זה לא בעיה קריטית, רק נכשיר את ההתראות
+      console.warn('הדפדפן לא תומך בהתראות');
+    }
+    
+    if(issues.length > 0){
+      const errorMsg = issues.join('\n');
+      alert('בעיות תאימות דפדפן:\n\n' + errorMsg + '\n\nחלק מהפיצ׳רים לא יעבדו כראוי.');
+    }
+  }
+  
+  checkBrowserCompatibility();
+
   let state = loadState();
 
   function loadState(){
@@ -708,12 +729,23 @@
           lastForgotNotifyDate: parsed.lastForgotNotifyDate || null
         };
       }
-    }catch(e){ console.warn('Could not parse saved data', e); }
+    }catch(e){ 
+      console.warn('Could not parse saved data', e);
+      // Error handling משופר - הודעה למשתמש
+      if(localStorage.getItem(STORAGE_KEY)){
+        alert('הייתה בעיה בטעינת הנתונים השמורים. האפליקציה תתחיל עם הגדרות ברירת מחדל.');
+      }
+    }
     return { rate:DEFAULT_MIN_WAGE, travelRate:DEFAULT_TRAVEL, shabbatStart:DEFAULT_SHABBAT_START, shabbatEnd:DEFAULT_SHABBAT_END, autoShabbat:false, city:'jerusalem', shabbatCache:{}, shifts:[], activeStart:null, employeeName:'', employerName:'', darkMode:false, notifyEnabled:false, lastForgotNotifyDate:null };
   }
 
   function saveState(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){
+      console.error('Failed to save state', e);
+      alert('שגיאה בשמירת הנתונים. ייתכן שהדפדפן חוסם שמירת נתונים מקומית. נסה לפנות מקום בזיכרון או להשתמש בדפדפן אחר.');
+    }
   }
 
   // עובד/ת מגיל 18+, ללא נקודות זיכוי/מס הכנסה - רק ביטוח לאומי ומס בריאות
@@ -1113,12 +1145,29 @@
     ensureUpcomingShabbatCached(true);
   });
   settingsSave.addEventListener('click', ()=>{
-    state.employeeName = settingsEmployeeName.value.trim();
-    state.employerName = settingsEmployerName.value.trim();
+    // Validation הוספה
     const r = parseFloat(settingsRate.value);
     const t = parseFloat(settingsTravel.value);
-    if(!isNaN(r) && r>=0) state.rate = r;
-    if(!isNaN(t) && t>=0) state.travelRate = t;
+    
+    if(isNaN(r) || r < 0 || r > 1000){
+      alert('יש להזין תעריף שעתי תקין (בין 0 ל-1000 ש"ח)');
+      return;
+    }
+    
+    if(isNaN(t) || t < 0 || t > 500){
+      alert('יש להזין תעריף נסיעה תקין (בין 0 ל-500 ש"ח)');
+      return;
+    }
+    
+    if(!settingsCity.value || settingsCity.value.trim() === ''){
+      alert('יש לבחור עיר');
+      return;
+    }
+    
+    state.employeeName = settingsEmployeeName.value.trim();
+    state.employerName = settingsEmployerName.value.trim();
+    state.rate = r;
+    state.travelRate = t;
     if(settingsShabbatStart.value) state.shabbatStart = strToTime(settingsShabbatStart.value);
     if(settingsShabbatEnd.value) state.shabbatEnd = strToTime(settingsShabbatEnd.value);
     const wasAuto = state.autoShabbat;
@@ -1224,12 +1273,26 @@
         backupStatus.style.color = 'var(--danger)';
         return;
       }
+      // Validation נוסף על הנתונים
+      if(typeof data.rate !== 'number' || data.rate < 0 || data.rate > 1000){
+        backupStatus.textContent = 'קובץ הגיבוי מכיל תעריף לא תקין.';
+        backupStatus.style.color='var(--danger)';
+        return;
+      }
+      
       // Merge by id so importing the same backup twice (or on a device that already has
       // some of these shifts) never creates duplicates - existing shifts are left untouched.
       const existingIds = new Set(state.shifts.map(s=>s.id));
       let added = 0;
       data.shifts.forEach(s=>{
-        if(s && s.id && !existingIds.has(s.id)){
+        // Validation של כל משמרת
+        if(!s || !s.id || !s.start || !s.end || s.end <= s.start){
+          return; // דלג על משמרות לא תקינות
+        }
+        if(typeof s.rate !== 'number' || s.rate < 0 || s.rate > 1000){
+          return; // דלג על משמרות עם תעריף לא תקין
+        }
+        if(!existingIds.has(s.id)){
           state.shifts.push(s);
           existingIds.add(s.id);
           added++;
@@ -1846,14 +1909,23 @@
     const rate = parseFloat(editRate.value);
     const mode = editMode.value;
     const travel = editTravel.checked ? state.travelRate : 0;
-    if(!startMs || !endMs || endMs <= startMs){
-      showModalError('יש לוודא ששעת הסיום מאוחרת משעת ההתחלה');
+    
+    // Validation משופר
+    if(!startMs || !endMs){
+      showModalError('יש להזין תאריך ושעה התחלה וסיום');
       return;
     }
-    if(isNaN(rate) || rate < 0){
-      showModalError('יש להזין תעריף שעתי תקין');
+    
+    if(endMs <= startMs){
+      showModalError('שעת הסיום חייבת להיות מאוחרת משעת ההתחלה');
       return;
     }
+    
+    if(isNaN(rate) || rate < 0 || rate > 1000){
+      showModalError('יש להזין תעריף שעתי תקין (בין 0 ל-1000 ש"ח)');
+      return;
+    }
+    
     modalError.style.display = 'none';
     const r = computePay(startMs, endMs, rate, mode);
 
