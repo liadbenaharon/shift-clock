@@ -495,7 +495,7 @@
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">
       חישוב הנטו כולל ביטוח לאומי ומס בריאות בלבד, ללא מס הכנסה ונקודות זיכוי – לצורך הערכה בלבד.
     </div>
-    <button class="btn primary" id="exportPayslipBtn" style="width:100%;margin-top:14px;">📊 ייצוא שעות לאקסל (CSV) - חודש זה</button>
+    <button class="btn primary" id="exportPayslipBtn" style="width:100%;margin-top:14px;">📊 הפקת תלוש שכר - חודש זה</button>
     <div id="payslipStatus" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;"></div>
   </section>
 
@@ -1918,16 +1918,11 @@
   historySearch.addEventListener('input', renderHistory);
   historyFilter.addEventListener('change', renderHistory);
 
-  // ---------- CSV export (works fully offline, opens in Excel/Google Sheets) ----------
+  // ---------- HTML payslip export (creates a printable payslip that looks like a real payslip) ----------
   const exportPayslipBtn = document.getElementById('exportPayslipBtn');
   const payslipStatus = document.getElementById('payslipStatus');
 
-  function csvEscape(val){
-    const s = String(val);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-  }
-
-  function buildPayslipCsv(selKey){
+  function buildPayslipHtml(selKey){
     const monthShifts = state.shifts
       .filter(s=>monthKey(s.start) === selKey)
       .slice()
@@ -1938,33 +1933,232 @@
     const deduction = computeDeduction(totalWorkPay);
     const netTotal = (totalWorkPay - deduction) + totalTravel;
 
-    const header = ['תאריך','יום','כניסה','יציאה','שעות רגילות','שעות נוספות 125%','שעות שבת/סופ"ש 150%','סה"כ שעות','תעריף','נסיעות','סה"כ לתשלום'];
+    // Parse month key for display
+    const [year, month] = selKey.split('-');
+    const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+    const monthName = monthNames[parseInt(month)-1];
+
     const rows = monthShifts.map(s=>{
       const d = new Date(s.start);
-      return [
-        fmtDate(s.start), DOW[d.getDay()], fmtTime(s.start), fmtTime(s.end),
-        s.regularHours.toFixed(2), s.ot125Hours.toFixed(2), s.weekendHours.toFixed(2), s.totalHours.toFixed(2),
-        (s.rate!=null?s.rate:state.rate).toFixed(2), (s.travel||0).toFixed(2), (s.pay+(s.travel||0)).toFixed(2)
-      ];
-    });
+      return `
+        <tr>
+          <td>${fmtDate(s.start)}</td>
+          <td>${DOW[d.getDay()]}</td>
+          <td>${fmtTime(s.start)}</td>
+          <td>${fmtTime(s.end)}</td>
+          <td>${s.regularHours.toFixed(2)}</td>
+          <td>${s.ot125Hours.toFixed(2)}</td>
+          <td>${s.weekendHours.toFixed(2)}</td>
+          <td>${s.totalHours.toFixed(2)}</td>
+          <td>₪${(s.rate!=null?s.rate:state.rate).toFixed(2)}</td>
+          <td>₪${(s.travel||0).toFixed(2)}</td>
+          <td>₪${(s.pay+(s.travel||0)).toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
 
-    const lines = [header, ...rows].map(r => r.map(csvEscape).join(','));
-    lines.push(''); // blank separator row before the summary
-    lines.push(['סה"כ שכר עבודה (ברוטו)', totalWorkPay.toFixed(2)].map(csvEscape).join(','));
-    lines.push(['סה"כ נסיעות', totalTravel.toFixed(2)].map(csvEscape).join(','));
-    lines.push(['ניכוי ביטוח לאומי + בריאות', (-deduction).toFixed(2)].map(csvEscape).join(','));
-    lines.push(['נטו לתשלום', netTotal.toFixed(2)].map(csvEscape).join(','));
+    const html = `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>תלוש שכר - ${monthName} ${year}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      direction: rtl;
+    }
+    .payslip {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border: 2px solid #2F7A6D;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #2F7A6D;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      color: #2F7A6D;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .header h2 {
+      color: #1B2430;
+      font-size: 18px;
+      font-weight: normal;
+    }
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #E4F1EE;
+      border-radius: 6px;
+    }
+    .info-item {
+      flex: 1;
+    }
+    .info-item label {
+      display: block;
+      font-weight: bold;
+      color: #2F7A6D;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+    .info-item span {
+      font-size: 16px;
+      color: #1B2430;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th {
+      background: #2F7A6D;
+      color: white;
+      padding: 12px 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    td {
+      padding: 10px 8px;
+      text-align: center;
+      border-bottom: 1px solid #E7E2D9;
+      font-size: 13px;
+    }
+    tr:nth-child(even) {
+      background: #FAF7F2;
+    }
+    .summary {
+      background: #2F7A6D;
+      color: white;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .summary-row:last-child {
+      border-bottom: none;
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 10px;
+      padding-top: 15px;
+    }
+    .summary-label {
+      flex: 1;
+    }
+    .summary-value {
+      font-weight: bold;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #E7E2D9;
+      color: #6B7280;
+      font-size: 12px;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .payslip { border: none; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="payslip">
+    <div class="header">
+      <h1>תלוש שכר</h1>
+      <h2>לחודש ${monthName} ${year}</h2>
+    </div>
 
-    // UTF-8 BOM prefix so Excel detects the encoding correctly and doesn't garble the Hebrew.
-    return '\uFEFF' + lines.join('\r\n');
+    <div class="info-section">
+      <div class="info-item">
+        <label>שם העובד/ת</label>
+        <span>${state.employeeName || 'לא צוין'}</span>
+      </div>
+      <div class="info-item">
+        <label>שם המעסיק/העסק</label>
+        <span>${state.employerName || 'לא צוין'}</span>
+      </div>
+      <div class="info-item">
+        <label>תאריך הפקה</label>
+        <span>${fmtDate(Date.now())}</span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>תאריך</th>
+          <th>יום</th>
+          <th>כניסה</th>
+          <th>יציאה</th>
+          <th>שעות רגילות</th>
+          <th>שעות נוספות 125%</th>
+          <th>שעות שבת/סופ"ש 150%</th>
+          <th>סה"כ שעות</th>
+          <th>תעריף</th>
+          <th>נסיעות</th>
+          <th>סה"כ לתשלום</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+
+    <div class="summary">
+      <div class="summary-row">
+        <span class="summary-label">סה"כ שכר עבודה (ברוטו)</span>
+        <span class="summary-value">₪${totalWorkPay.toFixed(2)}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">סה"כ נסיעות</span>
+        <span class="summary-value">₪${totalTravel.toFixed(2)}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">ניכוי ביטוח לאומי + בריאות</span>
+        <span class="summary-value">-₪${deduction.toFixed(2)}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">נטו לתשלום</span>
+        <span class="summary-value">₪${netTotal.toFixed(2)}</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>תלוש זה נוצר באופן אוטומטי על ידי מערכת שעון נוכחות</p>
+      <p>כל הזכויות שמורות © ${year}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    return html;
   }
 
   exportPayslipBtn.addEventListener('click', ()=>{
     const selKey = monthSelect.value || monthKey(Date.now());
-    const csv = buildPayslipCsv(selKey);
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+    const html = buildPayslipHtml(selKey);
+    const blob = new Blob([html], { type:'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const filename = `שעות-${selKey}.csv`;
+    const filename = `תלוש-שכר-${selKey}.html`;
 
     // Shown as a real tappable link (not just an auto-triggered download) since a
     // programmatic click can silently fail inside a standalone/home-screen app.
@@ -1973,7 +2167,7 @@
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
-    link.textContent = `📥 הקובץ מוכן — הקש כאן לפתיחה/הורדה`;
+    link.textContent = `📥 התלוש מוכן — הקש כאן לפתיחה/הורדה`;
     link.style.cssText = 'display:inline-block;color:var(--teal);font-weight:700;text-decoration:underline;';
     payslipStatus.appendChild(link);
     try{ link.click(); }catch(e){ /* the visible link above is the guaranteed fallback */ }
