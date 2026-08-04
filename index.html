@@ -664,6 +664,42 @@
 
 
 <script>
+// Service Worker Registration להתראות בטלפון
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // יוצר Service Worker פשוט inline
+    const swCode = `
+      self.addEventListener('install', (event) => {
+        self.skipWaiting();
+      });
+      
+      self.addEventListener('activate', (event) => {
+        event.waitUntil(self.clients.claim());
+      });
+      
+      self.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+          const options = event.data.options || {};
+          self.registration.showNotification(event.data.title, options);
+        }
+      });
+    `;
+    
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    
+    navigator.serviceWorker.register(swUrl)
+      .then(registration => {
+        console.log('Service Worker registered successfully');
+      })
+      .catch(error => {
+        console.log('Service Worker registration failed:', error);
+      });
+  });
+}
+</script>
+
+<script>
 (function(){
   const STORAGE_KEY = 'ilShiftTrackerData_v1';
   const HOUR_MS = 3600000;
@@ -1207,19 +1243,28 @@
       return;
     }
     try{
-      new Notification('שכחת לסגור משמרת?', {
-        body: 'יש לך משמרת שעדיין פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה. (זו התראת ניסיון)'
-      });
-      testNotifyStatus.textContent = 'נשלחה התראת ניסיון - אם לא רואים אותה, בדוק את מגירת ההתראות של הטלפון.';
-    }catch(e){
-      // טיפול משופר בשגיאות - במיוחד עבור טלפונים
-      if(e && e.message && e.message.includes('Illegal constructor')){
-        testNotifyStatus.textContent = 'התראות לא נתמכות בסביבה זו (טלפון דורש Service Worker). השתמש בגרסת דפדפן שולחן.';
-        testNotifyStatus.style.color = 'var(--danger)';
+      // נסה להשתמש ב-Service Worker אם קיים
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title: 'שכחת לסגור משמרת?',
+          options: {
+            body: 'יש לך משמרת שעדיים פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה. (זו התראת ניסיון)'
+          }
+        });
+        testNotifyStatus.textContent = 'נשלחה התראת ניסיון - אם לא רואים אותה, בדוק את מגירת ההתראות של הטלפון.';
       } else {
-        testNotifyStatus.textContent = 'שליחת ההתראה נכשלה: ' + ((e && e.message) || e);
-        testNotifyStatus.style.color = 'var(--danger)';
+        // חוזר לשיטה הרגילה אם אין Service Worker
+        new Notification('שכחת לסגור משמרת?', {
+          body: 'יש לך משמרת שעדיין פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה. (זו התראת ניסיון)'
+        });
+        testNotifyStatus.textContent = 'נשלחה התראת ניסיון - אם לא רואים אותה, בדוק את מגירת ההתראות של הטלפון.';
       }
+    }catch(e){
+      // מתעלם שגיאות בשקט - במיוחד בטלפונים שלא תומכים Notification API
+      console.warn('Notification failed silently', e);
+      testNotifyStatus.textContent = 'התראות לא זמינות בסביבה זו (עובד בדפדפן שולחן).';
+      testNotifyStatus.style.color = 'var(--muted)';
     }
   });
 
@@ -1675,9 +1720,21 @@
     const todayKey = dateKeyLocal(now);
     if(state.lastForgotNotifyDate === todayKey) return; // already notified today
     try{
-      new Notification('שכחת לסגור משמרת?', {
-        body: 'יש לך משמרת שעדיין פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה.'
-      });
+      // נסה להשתמש ב-Service Worker אם קיים
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title: 'שכחת לסגור משמרת?',
+          options: {
+            body: 'יש לך משמרת שעדיין פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה.'
+          }
+        });
+      } else {
+        // חוזר לשיטה הרגילה אם אין Service Worker
+        new Notification('שכחת לסגור משמרת?', {
+          body: 'יש לך משמרת שעדיין פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה.'
+        });
+      }
     }catch(e){ 
       // אם ההתראה נכשלה (למשל בטלפון), פשוט נתעלם בשקט
       console.warn('Notification failed (likely on mobile)', e); 
