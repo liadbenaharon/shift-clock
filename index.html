@@ -469,10 +469,7 @@
   <section>
     <div class="section-head">
       <h2>היסטוריית משמרות <span class="eyebrow" id="historyCount"></span></h2>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="monthSelect" style="border:1px solid var(--line);border-radius:10px;padding:0 8px;font-size:12.5px;background:var(--card);color:var(--ink);"></select>
-        <button class="icon-btn" id="addManualBtn" title="הוספת משמרת ידנית" style="width:auto;padding:0 10px;font-size:12px;font-weight:700;color:var(--ink);">+ הוספה ידנית</button>
-      </div>
+      <button class="icon-btn" id="addManualBtn" title="הוספת משמרת ידנית" style="width:auto;padding:0 10px;font-size:12px;font-weight:700;color:var(--ink);">+ הוספה ידנית</button>
     </div>
     
     <!-- סיכום חודשי - עבר לכאן -->
@@ -505,19 +502,17 @@
     </div>
     <button class="btn primary" id="exportPayslipBtn" style="width:100%;margin-bottom:16px;">📊 הפקת תלוש שכר - חודש זה</button>
     <div id="payslipStatus" style="font-size:11px;color:var(--muted);margin-bottom:16px;text-align:center;"></div>
+    
+    <!-- בחירת חודש -->
+    <div style="margin-bottom:16px;">
+      <select id="monthSelect" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;background:var(--card);color:var(--ink);"></select>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:6px;">
       <input type="text" id="quickAddText" placeholder="לדוגמה: אתמול מ-9 בבוקר עד 5, היום מ-14 עד 22" style="flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--card);color:var(--ink);">
       <button class="btn ghost" id="quickAddBtn" style="white-space:nowrap;padding:0 14px;">✨ פענח</button>
     </div>
     <div id="quickAddStatus" style="font-size:11px;color:var(--muted);margin-bottom:14px;"></div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="text" id="historySearch" placeholder="חיפוש לפי תאריך (למשל 5/8 או יום שלישי)" style="flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:12.5px;background:var(--card);color:var(--ink);">
-      <select id="historyFilter" style="border:1px solid var(--line);border-radius:10px;padding:0 8px;font-size:12.5px;background:var(--card);color:var(--ink);">
-        <option value="all">הכל</option>
-        <option value="weekend">שבת/סופ"ש בלבד</option>
-        <option value="overtime">נוספות בלבד</option>
-      </select>
-    </div>
+
     <div class="history-list" id="historyList"></div>
   </section>
 
@@ -1062,8 +1057,6 @@
   const weekendBadgeText = document.getElementById('weekendBadgeText');
   const historyList = document.getElementById('historyList');
   const historyCount = document.getElementById('historyCount');
-  const historySearch = document.getElementById('historySearch');
-  const historyFilter = document.getElementById('historyFilter');
   const monthSelect = document.getElementById('monthSelect');
   const sumShifts = document.getElementById('sumShifts');
   const sumHours = document.getElementById('sumHours');
@@ -1219,8 +1212,14 @@
       });
       testNotifyStatus.textContent = 'נשלחה התראת ניסיון - אם לא רואים אותה, בדוק את מגירת ההתראות של הטלפון.';
     }catch(e){
-      testNotifyStatus.textContent = 'שליחת ההתראה נכשלה: ' + ((e && e.message) || e);
-      testNotifyStatus.style.color = 'var(--danger)';
+      // טיפול משופר בשגיאות - במיוחד עבור טלפונים
+      if(e && e.message && e.message.includes('Illegal constructor')){
+        testNotifyStatus.textContent = 'התראות לא נתמכות בסביבה זו (טלפון דורש Service Worker). השתמש בגרסת דפדפן שולחן.';
+        testNotifyStatus.style.color = 'var(--danger)';
+      } else {
+        testNotifyStatus.textContent = 'שליחת ההתראה נכשלה: ' + ((e && e.message) || e);
+        testNotifyStatus.style.color = 'var(--danger)';
+      }
     }
   });
 
@@ -1679,7 +1678,10 @@
       new Notification('שכחת לסגור משמרת?', {
         body: 'יש לך משמרת שעדיין פעילה באפליקציה. אם כבר סיימת, אל תשכח לסגור אותה.'
       });
-    }catch(e){ console.warn('Notification failed', e); }
+    }catch(e){ 
+      // אם ההתראה נכשלה (למשל בטלפון), פשוט נתעלם בשקט
+      console.warn('Notification failed (likely on mobile)', e); 
+    }
     state.lastForgotNotifyDate = todayKey;
     saveState();
   }
@@ -1720,20 +1722,7 @@
   }
 
   // ---------- history rendering ----------
-  function shiftMatchesSearch(s, query){
-    if(!query) return true;
-    const d = new Date(s.start);
-    const padded = fmtDate(s.start); // "05/08"
-    const unpadded = `${d.getDate()}/${d.getMonth()+1}`; // "5/8"
-    const dow = DOW[d.getDay()];
-    const haystack = `${padded} ${unpadded} ${dow}`;
-    return haystack.includes(query.trim());
-  }
-  function shiftMatchesFilter(s, filter){
-    if(filter === 'weekend') return s.weekendHours > 0.01;
-    if(filter === 'overtime') return (s.ot125Hours > 0.01) || (s.ot150Hours > 0.01);
-    return true; // 'all'
-  }
+
 
   function renderHistory(){
     const allShifts = state.shifts.slice().sort((a,b)=> b.start - a.start);
@@ -1751,9 +1740,7 @@
       historyList.innerHTML = `<div class="empty-state">אין משמרות רשומות ב${monthLabel(selectedMonth)}.</div>`;
       return;
     }
-    const query = historySearch.value;
-    const filter = historyFilter.value;
-    const shifts = monthShifts.filter(s => shiftMatchesSearch(s, query) && shiftMatchesFilter(s, filter));
+    const shifts = monthShifts;
     if(shifts.length === 0){
       historyList.innerHTML = '<div class="empty-state">שום משמרת לא תואמת את החיפוש/הסינון הנוכחי.</div>';
       return;
@@ -2016,8 +2003,6 @@
     sumNet.textContent = fmtMoney(netTotal);
   }
   monthSelect.addEventListener('change', ()=>{ renderSummary(); renderHistory(); });
-  historySearch.addEventListener('input', renderHistory);
-  historyFilter.addEventListener('change', renderHistory);
 
   // ---------- HTML payslip export (creates a printable payslip that looks like a real payslip) ----------
   const exportPayslipBtn = document.getElementById('exportPayslipBtn');
