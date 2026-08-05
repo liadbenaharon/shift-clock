@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>שעון נוכחות · מעקב שעות ושכר v1.9</title>
+<title>שעון נוכחות · מעקב שעות ושכר v2.0</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -132,7 +132,6 @@
   .field input, .field select{ width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:14px; background:var(--card); color:var(--ink); }
   .field select{ font-family:'Heebo',sans-serif; font-size:13px; }
   
-  /* תצוגה מקדימה לפני שמירה */
   .preview-box{ background:var(--surface-dark); border-radius:14px; padding:14px 16px; margin-top:6px; color:#fff; }
   .preview-line{ font-size:12px; color:rgba(255,255,255,0.9); margin-bottom:12px; display:flex; flex-wrap:wrap; gap:6px; }
   .preview-total{ display:flex; align-items:center; justify-content:space-between; font-size:13px; color:rgba(255,255,255,0.75); border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; }
@@ -159,7 +158,7 @@
 
   <header class="top">
     <div>
-      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v1.9</span></h1>
+      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v2.0</span></h1>
       <div class="sub">מעקב שעות עבודה וחישוב שכר</div>
     </div>
     <button class="icon-btn" id="settingsBtn" title="הגדרות" style="width:auto;padding:0 12px;font-size:13px;font-weight:700;color:var(--ink);gap:6px;display:inline-flex;align-items:center;">
@@ -222,15 +221,8 @@
     
     <button class="btn" id="exportPayslipBtn" style="width:100%;background:var(--surface-dark);color:white;border-radius:12px;margin-bottom:16px;">📊 הדפסת תלוש שכר / שמירה כ-PDF</button>
     
-    <!-- בחירת חודש -->
     <div style="margin-bottom:16px;">
       <select id="monthSelect" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;background:var(--card);color:var(--ink);"></select>
-    </div>
-
-    <!-- הוספה מהירה באמצעות טקסט (מנוטרל למניעת תקלות בגרסה זו) -->
-    <div style="display:none;">
-      <input type="text" id="quickAddText">
-      <button id="quickAddBtn"></button>
     </div>
 
     <div class="history-list" id="historyList"></div>
@@ -268,7 +260,6 @@
       <label for="editTravel" style="margin:0;font-size:13px;color:var(--ink);">כלול נסיעות (<span id="editTravelAmt">₪17.50</span>)</label>
     </div>
     
-    <!-- הקובייה הכהה עם התגיות המפורטות -->
     <div class="preview-box" id="previewBox">
       <div class="preview-line" id="previewBreakdown"></div>
       <div class="preview-total">
@@ -332,7 +323,8 @@
         <option value="eilat">אילת</option>
       </select>
     </div>
-    <div id="autoShabbatStatus" style="font-size:11px;color:var(--muted);margin:-4px 0 14px;"></div>
+    <div id="autoShabbatStatus" style="font-size:11px;color:var(--muted);margin:-4px 0 14px;text-align:center;"></div>
+    <button type="button" class="btn ghost" id="autoShabbatRetry" style="width:100%;margin-bottom:14px;">🔄 סנכרן עכשיו שבת קרובה</button>
     
     <div class="field">
       <label>שעת כניסת שבת (גיבוי, יום ו')</label>
@@ -373,20 +365,16 @@
   const DEFAULT_SHABBAT_START = {hour:19, minute:0};
   const DEFAULT_SHABBAT_END = {hour:19, minute:0};
 
-  // ביטוח לאומי + מס בריאות + פנסיה
   const NI_THRESHOLD = 7703;
   const NI_CEILING = 51910;
   const NI_RATE_LOW = 0.0427;
   const NI_RATE_HIGH = 0.1217;
-  const PENSION_RATE = 0.06; // 6% חובה פנסיה
+  const PENSION_RATE = 0.06;
 
-  // חוק שעות עבודה בישראל (5-6 ימים בשבוע)
   const OT_TIER1_H = 8;
   const OT_TIER2_H = 10; 
 
-  function toggleScrollLock(lock) {
-    document.body.style.overflow = lock ? 'hidden' : '';
-  }
+  function toggleScrollLock(lock) { document.body.style.overflow = lock ? 'hidden' : ''; }
 
   function loadState(){
     try{
@@ -414,10 +402,7 @@
   }
 
   let state = loadState();
-
-  function saveState(){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
-  }
+  function saveState(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
 
   function computeDeduction(grossWork){
     const lowPart = Math.min(grossWork, NI_THRESHOLD);
@@ -427,9 +412,7 @@
     return { niHealth, pension, total: niHealth + pension };
   }
 
-  function dateKeyLocal(d){
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }
+  function dateKeyLocal(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
   const CITY_COORDS = { jerusalem:{lat:31.7683, lng:35.2137}, telaviv:{lat:32.0853, lng:34.7818}, haifa:{lat:32.7940, lng:34.9896}, beersheva:{lat:31.2530, lng:34.7915}, eilat:{lat:29.5581, lng:34.9482} };
 
@@ -461,7 +444,7 @@
       if(candleItem && havdalahItem){
         state.shabbatCache[key] = { candle: new Date(candleItem.date).getTime(), havdalah: new Date(havdalahItem.date).getTime() };
         saveState();
-        setAutoShabbatStatus(`עודכן ✓ הדלקת נרות ${fmtTime(state.shabbatCache[key].candle)}`);
+        setAutoShabbatStatus(`עודכן ✓ נרות: ${fmtTime(state.shabbatCache[key].candle)} | מוצ"ש: ${fmtTime(state.shabbatCache[key].havdalah)}`);
         renderAll();
       } else {
         shabbatFetchFailedKeys.add(key);
@@ -579,9 +562,7 @@
     return { ...cats, totalHours, pay };
   }
 
-  function isNowWeekend(){
-    return splitShiftHours(Date.now()-1000, Date.now()).weekendMs > 0;
-  }
+  function isNowWeekend(){ return splitShiftHours(Date.now()-1000, Date.now()).weekendMs > 0; }
 
   function pad(n){ return String(n).padStart(2,'0'); }
   function fmtHMS(ms){
@@ -665,6 +646,16 @@
   
   document.getElementById('settingsDarkMode').addEventListener('change', ()=> document.documentElement.classList.toggle('dark', document.getElementById('settingsDarkMode').checked));
   
+  document.getElementById('autoShabbatRetry').addEventListener('click', ()=>{
+    state.city = document.getElementById('settingsCity').value;
+    state.autoShabbat = true;
+    document.getElementById('settingsAutoShabbat').checked = true;
+    shabbatFetchFailedKeys.clear();
+    shabbatFailureCooldownUntil = 0;
+    setAutoShabbatStatus('מסתנכרן...');
+    ensureUpcomingShabbatCached(true); 
+  });
+
   document.getElementById('settingsSave').addEventListener('click', ()=>{
     const r = parseFloat(document.getElementById('settingsRate').value);
     const t = parseFloat(document.getElementById('settingsTravel').value);
@@ -835,12 +826,17 @@
     clearTimeout(undoTimeoutId); undoToast.style.display = 'none'; pendingDeletedShift = null;
   });
 
+  // ---------- סינכרון אוטומטי של התאריכים (תיקון חשוב!) ----------
   function openShiftModal(mode, id, startMs, endMs){
     modalMode = mode; editingId = id;
     const titles = { edit: 'עריכת משמרת', clockout: 'סיום משמרת · אישור שכר', manual: 'הוספת משמרת ידנית' };
     modalTitle.textContent = titles[mode];
     editStart.value = toLocalInputValue(startMs); editEnd.value = toLocalInputValue(endMs);
     document.getElementById('editTravelAmt').textContent = fmtMoney(state.travelRate);
+    
+    // שמירת התאריכים הנוכחיים כדי שנדע מתי רק התאריך השתנה ולא השעה
+    editStart.dataset.lastDate = editStart.value.split('T')[0];
+    editEnd.dataset.lastDate = editEnd.value.split('T')[0];
     
     if(mode === 'edit'){
       const s = state.shifts.find(x=>x.id===id);
@@ -850,6 +846,30 @@
     }
     updatePreview(); editOverlay.classList.add('open'); toggleScrollLock(true);
   }
+
+  editStart.addEventListener('input', ()=>{
+    const newDate = editStart.value.split('T')[0];
+    if(newDate && newDate !== editStart.dataset.lastDate){
+      editStart.dataset.lastDate = newDate;
+      const endParts = editEnd.value.split('T');
+      editEnd.value = newDate + 'T' + (endParts[1] || '00:00');
+      editEnd.dataset.lastDate = newDate;
+    }
+    updatePreview();
+  });
+
+  editEnd.addEventListener('input', ()=>{
+    const newDate = editEnd.value.split('T')[0];
+    if(newDate && newDate !== editEnd.dataset.lastDate){
+      editEnd.dataset.lastDate = newDate;
+      const startParts = editStart.value.split('T');
+      editStart.value = newDate + 'T' + (startParts[1] || '00:00');
+      editStart.dataset.lastDate = newDate;
+    }
+    updatePreview();
+  });
+
+  [document.getElementById('editRate'), document.getElementById('editMode'), document.getElementById('editTravel')].forEach(el=> el.addEventListener('input', updatePreview));
 
   function updatePreview(){
     const startMs = fromLocalInputValue(editStart.value);
@@ -867,7 +887,6 @@
     const r = computePay(startMs, endMs, rate, mode);
     const parts = [];
     
-    // --> תצוגת התגיות לפני שמירת המשמרת <--
     if(r.regularHours > 0.005) parts.push(`<span style="display:inline-block; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px;">רגיל: ${fmtHours(r.regularHours)} ש'</span>`);
     if(r.ot125Hours > 0.005) parts.push(`<span style="display:inline-block; background:rgba(232,163,61,0.2); color:#E8A33D; padding:4px 8px; border-radius:6px;">125%: ${fmtHours(r.ot125Hours)} ש'</span>`);
     if(r.ot150Hours > 0.005) parts.push(`<span style="display:inline-block; background:rgba(196,69,58,0.2); color:#ffb4ab; padding:4px 8px; border-radius:6px;">150%: ${fmtHours(r.ot150Hours)} ש'</span>`);
@@ -877,8 +896,6 @@
     previewBreakdown.innerHTML = parts.join(' ') || '—';
     document.getElementById('previewAmt').textContent = fmtMoney(r.pay + travel);
   }
-  
-  [editStart, editEnd, editRate, editMode, editTravel].forEach(el=> el.addEventListener('input', updatePreview));
 
   document.getElementById('cancelEdit').addEventListener('click', ()=>{ editOverlay.classList.remove('open'); toggleScrollLock(false); });
 
