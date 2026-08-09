@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <!-- 
   שעון נוכחות · מעקב שעות ושכר
-  גרסה: v3.4
+  גרסה: v3.5
 -->
-<title>שעון נוכחות · מעקב שעות ושכר v3.4</title>
+<title>שעון נוכחות · מעקב שעות ושכר v3.5</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F7A6D">
 <meta name="mobile-web-app-capable" content="yes">
@@ -511,7 +511,7 @@ Drop to add to agen
 
   <header class="top">
     <div>
-      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v3.4</span></h1>
+      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v3.5</span></h1>
       <div class="sub">מעקב שעות עבודה וחישוב שכר</div>
     </div>
     <button class="icon-btn" id="settingsBtn" title="הגדרות" style="width:auto;padding:0 12px;font-size:13px;font-weight:700;color:var(--ink);gap:6px;display:inline-flex;align-items:center;">
@@ -632,11 +632,11 @@ Drop to add to agen
         <span>שכר סופי למשמרת</span>
         <span class="preview-amt" id="previewAmt">₪0</span>
       </div>
+      <div id="dailyTotalInfo" style="margin-top:10px;font-size:12px;color:var(--muted);text-align:center;"></div>
     </div>
     <div id="modalError" style="display:none;color:var(--danger);font-size:12px;margin-top:10px;text-align:center;"></div>
     <div class="modal-actions">
       <button class="btn ghost" id="cancelEdit">ביטול</button>
-      <button class="btn ghost" id="deleteAllShifts" style="color:var(--danger);border-color:var(--danger-light);">🗑️ מחק הכל</button>
       <button class="btn primary" id="saveEdit">שמירה</button>
     </div>
   </div>
@@ -2262,7 +2262,25 @@ if ('serviceWorker' in navigator) {
     previewBreakdown.innerHTML = parts.map(p=>`<span>${p}</span>`).join(' + ') || '—';
     previewAmt.textContent = fmtMoney(r.pay + travel);
     
-    console.log('updatePreview result:', { r, totalWithTravel: r.pay + travel });
+    // חישוב סה"כ היומי והשווא
+    const dailyDate = new Date(startMs).toDateString();
+    const shiftsOnDay = state.shifts.filter(s => new Date(s.start).toDateString() === dailyDate);
+    const dailyTotal = shiftsOnDay.reduce((sum, s) => sum + (s.pay + (s.travel || 0)), 0);
+    const currentShiftPay = r.pay + travel;
+    
+    const dailyInfo = document.getElementById('dailyTotalInfo');
+    if(modalMode === 'edit') {
+      const s = state.shifts.find(x=>x.id===editingId);
+      if(s) {
+        const originalPay = s.pay + (s.travel || 0);
+        const newDailyTotal = dailyTotal - originalPay + currentShiftPay;
+        dailyInfo.textContent = `סה"כ היומי: ${fmtMoney(newDailyTotal)} | השווא: ${fmtMoney(newDailyTotal - currentShiftPay)}`;
+      }
+    } else {
+      dailyInfo.textContent = `סה"כ היומי: ${fmtMoney(dailyTotal + currentShiftPay)}`;
+    }
+    
+    console.log('updatePreview result:', { r, totalWithTravel: r.pay + travel, dailyTotal, currentShiftPay });
   }
   // When adding a manual shift, changing the start date auto-fills the same date on the
   // end field (keeping whatever end time is already set) so the date isn't entered twice.
@@ -2298,15 +2316,6 @@ if ('serviceWorker' in navigator) {
   }
 
   cancelEdit.addEventListener('click', closeModal);
-  
-  document.getElementById('deleteAllShifts').addEventListener('click', ()=>{
-    if(confirm('האם אתה בטוח שברצונך למחוק את כל המשמרות? פעולה זו לא ניתנת לביטול.')){
-      state.shifts = [];
-      saveState();
-      renderAll();
-      closeModal();
-    }
-  });
   
   function closeModal(){
     editOverlay.classList.remove('open');
