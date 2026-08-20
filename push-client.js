@@ -31,18 +31,18 @@ function readLocalState() {
   catch (_) { return {}; }
 }
 
-function applyV46Dashboard() {
-  document.title = document.title.replace(/v\d+\.\d+/, 'v4.6');
+function applyV47Dashboard() {
+  document.title = document.title.replace(/v\d+\.\d+/, 'v4.7');
   const version = document.querySelector('header.top h1 span');
-  if (version) version.textContent = 'v4.6';
+  if (version) version.textContent = 'v4.7';
 
-  if (!document.getElementById('dashboard-v46-style')) {
+  if (!document.getElementById('dashboard-v47-style')) {
     const style = document.createElement('style');
-    style.id = 'dashboard-v46-style';
+    style.id = 'dashboard-v47-style';
     style.textContent = `
       :root.dark{--cream:#0b1017;--card:#121a24;--line:#263444;--muted:#8f9cab;--surface-dark:#0f1824;}
       body{background:radial-gradient(circle at 80% 0%,rgba(47,122,109,.14),transparent 28%),var(--cream);}
-      .wrap{max-width:900px;padding:18px 14px 170px;}
+      .wrap{max-width:900px;padding:18px 14px 112px;}
       header.top{margin-bottom:22px;align-items:flex-start;}
       header.top h1{font-size:30px!important;line-height:1.05;display:flex;align-items:center;gap:9px;}
       header.top h1 span{font-size:18px!important;color:#61dc79;font-weight:700;}
@@ -54,23 +54,23 @@ function applyV46Dashboard() {
       #timerDigits{font-size:clamp(58px,16vw,88px)!important;letter-spacing:.015em!important;margin:18px 0 6px!important;}
       #timerSub{font-size:18px!important;color:#9ba8b7!important;}
       #timerSub b{color:#f1b53b!important;font-size:23px!important;}
-      .v46-info-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #2d3e50;border-bottom:1px solid #2d3e50;margin:24px 0 18px;padding:20px 0;}
-      .v46-info{padding:0 10px;text-align:center;border-inline-start:1px solid #2d3e50;}
-      .v46-info:first-child{border-inline-start:none;}
-      .v46-info .ico{font-size:22px;display:block;margin-bottom:7px;}
-      .v46-info .lbl{font-size:13px;color:#9aa6b4;}
-      .v46-info .val{font-size:18px;font-weight:800;margin-top:2px;white-space:nowrap;}
-      .v46-info .sub{font-size:12px;color:#7f8d9d;margin-top:2px;}
-      .v46-info.pay .val{color:#62dd7a;}
-      .v46-tag-title{font-size:15px;font-weight:700;color:#98a5b4;margin:10px 0;}
-      .v46-tags{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
-      .v46-chip{border-radius:999px;padding:7px 13px;border:1px solid #3f5872;background:#14263a;color:#d9e7f7;font-size:13px;font-weight:700;}
-      .v46-chip.orange{border-color:#7f5617;background:#2a2111;color:#efb34a;}
-      .v46-chip.purple{border-color:#67427d;background:#24192d;color:#d3a0ec;}
-      .v46-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:12px!important;margin-top:18px!important;}
-      .v46-actions .clock-btn,.v46-actions #cancelShiftBtn{min-height:92px!important;border-radius:22px!important;font-size:23px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;}
-      .v46-actions .clock-btn.stop{background:#111923!important;border:2px solid #57d975!important;color:white!important;}
-      .v46-actions #cancelShiftBtn{background:#111923!important;border:2px solid #ff5858!important;color:white!important;}
+      .v47-info-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #2d3e50;border-bottom:1px solid #2d3e50;margin:24px 0 18px;padding:20px 0;}
+      .v47-info{padding:0 10px;text-align:center;border-inline-start:1px solid #2d3e50;}
+      .v47-info:first-child{border-inline-start:none;}
+      .v47-info .ico{font-size:22px;display:block;margin-bottom:7px;}
+      .v47-info .lbl{font-size:13px;color:#9aa6b4;}
+      .v47-info .val{font-size:18px;font-weight:800;margin-top:2px;white-space:nowrap;}
+      .v47-info .sub{font-size:12px;color:#7f8d9d;margin-top:2px;}
+      .v47-info.pay .val{color:#62dd7a;}
+      .v47-tag-title{font-size:15px;font-weight:700;color:#98a5b4;margin:10px 0;}
+      .v47-tags{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
+      .v47-chip{border-radius:999px;padding:7px 13px;border:1px solid #3f5872;background:#14263a;color:#d9e7f7;font-size:13px;font-weight:700;}
+      .v47-chip.orange{border-color:#7f5617;background:#2a2111;color:#efb34a;}
+      .v47-chip.purple{border-color:#67427d;background:#24192d;color:#d3a0ec;}
+      .v47-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:12px!important;margin-top:18px!important;}
+      .v47-actions .clock-btn,.v47-actions #cancelShiftBtn{min-height:92px!important;border-radius:22px!important;font-size:23px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;}
+      .v47-actions .clock-btn.stop{background:#111923!important;border:2px solid #57d975!important;color:white!important;}
+      .v47-actions #cancelShiftBtn{background:#111923!important;border:2px solid #ff5858!important;color:white!important;}
       .summary-card,.totals-row>div,.shift-row{background:#131b25!important;border:1px solid #293847!important;border-radius:20px!important;box-shadow:none!important;}
       .summary-card{min-height:118px!important;display:flex;flex-direction:column;align-items:center;justify-content:center;}
       .summary-card .value{font-size:27px!important;}
@@ -81,55 +81,53 @@ function applyV46Dashboard() {
       .shift-row .actions{min-width:66px!important;}
       #sumExpenses,[for="editExpenses"],#editExpenses,.expense,.expenses,.expenses-row{display:none!important;}
 
-      .v46-bottom-nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom));width:min(900px,calc(100% - 14px));z-index:9999;display:grid;grid-template-columns:repeat(4,1fr);padding:11px 14px 13px;background:rgba(12,18,26,.97);backdrop-filter:blur(16px);border:1px solid #283747;border-radius:22px;box-shadow:0 -10px 28px rgba(0,0,0,.25);}
-      .v46-nav{text-align:center;color:#8f9baa;font-size:12px;cursor:pointer;user-select:none;}
-      .v46-nav .ico{display:block;font-size:22px;line-height:1;margin-bottom:5px;}
-      .v46-nav.active{color:#61dc79;font-weight:800;}
+      .v47-bottom-nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(900px,100%);z-index:9999;display:grid;grid-template-columns:repeat(4,1fr);padding:11px 14px calc(13px + env(safe-area-inset-bottom));background:rgba(12,18,26,.97);backdrop-filter:blur(16px);border:1px solid #283747;border-bottom:none;border-radius:22px 22px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.25);}
+      .v47-nav{text-align:center;color:#8f9baa;font-size:12px;cursor:pointer;user-select:none;}
+      .v47-nav .ico{display:block;font-size:22px;line-height:1;margin-bottom:5px;}
+      .v47-nav.active{color:#61dc79;font-weight:800;}
 
-      #settingsOverlay.open{z-index:10000!important;padding-bottom:0!important;}
-      #settingsOverlay .modal,#settingsOverlay .settings-card,#settingsOverlay .panel,#settingsOverlay .sheet{padding-bottom:24px!important;max-height:calc(100vh - 150px)!important;overflow-y:auto!important;}
+      #settingsOverlay.open{z-index:10000!important;padding-bottom:0!important;align-items:flex-start!important;justify-content:center!important;overflow-y:auto!important;}
+      #settingsOverlay .modal,#settingsOverlay .settings-card,#settingsOverlay .panel,#settingsOverlay .sheet{margin-top:12px!important;margin-bottom:100px!important;padding-bottom:24px!important;max-height:none!important;overflow:visible!important;}
       #settingsOverlay .modal-actions,#settingsOverlay .settings-actions,#settingsOverlay .actions{position:static!important;bottom:auto!important;z-index:auto!important;background:transparent!important;padding-top:12px!important;padding-bottom:12px!important;}
       #settingsCancel,#settingsSave{position:static!important;z-index:auto!important;}
-      body.v46-settings-open .v46-bottom-nav{z-index:10040!important;}
-      body.v46-settings-open{overflow:hidden;}
+      body.v47-settings-open .v47-bottom-nav{z-index:10040!important;}
 
       @media(max-width:640px){
         header.top h1{font-size:26px!important;}
-        .v46-info-grid{grid-template-columns:repeat(2,1fr);row-gap:18px;}
-        .v46-info:nth-child(3){border-inline-start:none;}
-        .v46-actions .clock-btn,.v46-actions #cancelShiftBtn{min-height:86px!important;font-size:21px!important;}
-        .v46-bottom-nav{bottom:calc(30px + env(safe-area-inset-bottom));width:calc(100% - 18px);}
+        .v47-info-grid{grid-template-columns:repeat(2,1fr);row-gap:18px;}
+        .v47-info:nth-child(3){border-inline-start:none;}
+        .v47-actions .clock-btn,.v47-actions #cancelShiftBtn{min-height:86px!important;font-size:21px!important;}
       }
     `;
     document.head.appendChild(style);
   }
 
   const card = document.querySelector('.clock-card');
-  if (card && !card.querySelector('.v46-info-grid')) {
+  if (card && !card.querySelector('.v47-info-grid')) {
     const timerSub = document.getElementById('timerSub');
     const grid = document.createElement('div');
-    grid.className = 'v46-info-grid';
+    grid.className = 'v47-info-grid';
     grid.innerHTML = `
-      <div class="v46-info"><span class="ico">📅</span><div class="lbl">תאריך</div><div class="val" id="v46Date">—</div><div class="sub" id="v46Day">—</div></div>
-      <div class="v46-info"><span class="ico">🕒</span><div class="lbl">שעות</div><div class="val" id="v46Hours">—</div><div class="sub">זמן אמת</div></div>
-      <div class="v46-info pay"><span class="ico">💵</span><div class="lbl">שכר משוער</div><div class="val" id="v46Pay">—</div><div class="sub">עד כה</div></div>
-      <div class="v46-info"><span class="ico">⏱️</span><div class="lbl">משך</div><div class="val" id="v46Duration">—</div><div class="sub">שעות</div></div>`;
+      <div class="v47-info"><span class="ico">📅</span><div class="lbl">תאריך</div><div class="val" id="v47Date">—</div><div class="sub" id="v47Day">—</div></div>
+      <div class="v47-info"><span class="ico">🕒</span><div class="lbl">שעות</div><div class="val" id="v47Hours">—</div><div class="sub">זמן אמת</div></div>
+      <div class="v47-info pay"><span class="ico">💵</span><div class="lbl">שכר משוער</div><div class="val" id="v47Pay">—</div><div class="sub">עד כה</div></div>
+      <div class="v47-info"><span class="ico">⏱️</span><div class="lbl">משך</div><div class="val" id="v47Duration">—</div><div class="sub">שעות</div></div>`;
     if (timerSub) timerSub.insertAdjacentElement('afterend', grid);
     const title = document.createElement('div');
-    title.className = 'v46-tag-title';
+    title.className = 'v47-tag-title';
     title.textContent = 'תגיות';
     grid.insertAdjacentElement('afterend', title);
     const tags = document.createElement('div');
-    tags.className = 'v46-tags';
-    tags.innerHTML = '<span class="v46-chip">🌙 ערב</span><span class="v46-chip orange">◔ שעות נוספות</span><span class="v46-chip purple">📅 יומי</span>';
+    tags.className = 'v47-tags';
+    tags.innerHTML = '<span class="v47-chip">🌙 ערב</span><span class="v47-chip orange">◔ שעות נוספות</span><span class="v47-chip purple">📅 יומי</span>';
     title.insertAdjacentElement('afterend', tags);
   }
 
   const clockBtn = document.getElementById('clockBtn');
   const cancelBtn = document.getElementById('cancelShiftBtn');
-  if (clockBtn && cancelBtn && !clockBtn.parentElement.classList.contains('v46-actions')) {
+  if (clockBtn && cancelBtn && !clockBtn.parentElement.classList.contains('v47-actions')) {
     const actions = document.createElement('div');
-    actions.className = 'v46-actions';
+    actions.className = 'v47-actions';
     clockBtn.parentElement.insertBefore(actions, clockBtn);
     actions.appendChild(clockBtn);
     actions.appendChild(cancelBtn);
@@ -143,25 +141,34 @@ function applyV46Dashboard() {
 
   const settingsOverlay = document.getElementById('settingsOverlay');
   const settingsBtn = document.getElementById('settingsBtn');
+  const resetSettingsToTop = () => {
+    if (!settingsOverlay) return;
+    settingsOverlay.scrollTop = 0;
+    const inner = settingsOverlay.querySelector('.modal,.settings-card,.panel,.sheet');
+    if (inner) inner.scrollTop = 0;
+  };
   const closeSettings = () => {
     settingsOverlay?.classList.remove('open');
-    document.body.classList.remove('v46-settings-open');
+    document.body.classList.remove('v47-settings-open');
   };
   const openSettings = () => {
     settingsBtn?.click();
     setTimeout(() => {
-      if (settingsOverlay?.classList.contains('open')) document.body.classList.add('v46-settings-open');
+      if (settingsOverlay?.classList.contains('open')) {
+        document.body.classList.add('v47-settings-open');
+        resetSettingsToTop();
+      }
     }, 0);
   };
 
-  if (!document.querySelector('.v46-bottom-nav')) {
+  if (!document.querySelector('.v47-bottom-nav')) {
     const nav = document.createElement('div');
-    nav.className = 'v46-bottom-nav';
-    nav.innerHTML = '<div class="v46-nav active" data-target="home"><span class="ico">⌂</span>בית</div><div class="v46-nav" data-target="history"><span class="ico">◷</span>היסטוריה</div><div class="v46-nav" data-target="reports"><span class="ico">▥</span>דיווחים</div><div class="v46-nav" data-target="settings"><span class="ico">⚙</span>הגדרות</div>';
+    nav.className = 'v47-bottom-nav';
+    nav.innerHTML = '<div class="v47-nav active" data-target="home"><span class="ico">⌂</span>בית</div><div class="v47-nav" data-target="history"><span class="ico">◷</span>היסטוריה</div><div class="v47-nav" data-target="reports"><span class="ico">▥</span>דיווחים</div><div class="v47-nav" data-target="settings"><span class="ico">⚙</span>הגדרות</div>';
     document.body.appendChild(nav);
 
     nav.addEventListener('click', (e) => {
-      const item = e.target.closest('.v46-nav');
+      const item = e.target.closest('.v47-nav');
       if (!item) return;
       const target = item.dataset.target;
       const wasSettingsOpen = !!settingsOverlay?.classList.contains('open');
@@ -173,14 +180,14 @@ function applyV46Dashboard() {
           nav.querySelector('[data-target="home"]')?.classList.add('active');
           return;
         }
-        nav.querySelectorAll('.v46-nav').forEach(x => x.classList.remove('active'));
+        nav.querySelectorAll('.v47-nav').forEach(x => x.classList.remove('active'));
         item.classList.add('active');
         openSettings();
         return;
       }
 
       if (wasSettingsOpen) closeSettings();
-      nav.querySelectorAll('.v46-nav').forEach(x => x.classList.remove('active'));
+      nav.querySelectorAll('.v47-nav').forEach(x => x.classList.remove('active'));
       item.classList.add('active');
 
       if (target === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -191,15 +198,19 @@ function applyV46Dashboard() {
 
   settingsBtn?.addEventListener('click', () => {
     setTimeout(() => {
-      if (settingsOverlay?.classList.contains('open')) document.body.classList.add('v46-settings-open');
-      else document.body.classList.remove('v46-settings-open');
+      if (settingsOverlay?.classList.contains('open')) {
+        document.body.classList.add('v47-settings-open');
+        resetSettingsToTop();
+      } else {
+        document.body.classList.remove('v47-settings-open');
+      }
     }, 0);
   });
-  document.getElementById('settingsCancel')?.addEventListener('click', () => document.body.classList.remove('v46-settings-open'));
-  document.getElementById('settingsSave')?.addEventListener('click', () => document.body.classList.remove('v46-settings-open'));
+  document.getElementById('settingsCancel')?.addEventListener('click', () => document.body.classList.remove('v47-settings-open'));
+  document.getElementById('settingsSave')?.addEventListener('click', () => document.body.classList.remove('v47-settings-open'));
   settingsOverlay?.addEventListener('click', () => {
     setTimeout(() => {
-      if (!settingsOverlay.classList.contains('open')) document.body.classList.remove('v46-settings-open');
+      if (!settingsOverlay.classList.contains('open')) document.body.classList.remove('v47-settings-open');
     }, 0);
   });
 
@@ -208,7 +219,7 @@ function applyV46Dashboard() {
     const startMs = Number(state.activeStart || 0);
     const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
     if (!startMs) {
-      set('v46Date', '—'); set('v46Day', '—'); set('v46Hours', '—'); set('v46Pay', '₪0.00'); set('v46Duration', '0:00');
+      set('v47Date', '—'); set('v47Day', '—'); set('v47Hours', '—'); set('v47Pay', '₪0.00'); set('v47Duration', '0:00');
       return;
     }
     const start = new Date(startMs);
@@ -220,11 +231,11 @@ function applyV46Dashboard() {
     const pay = rate * (elapsed / 3600000);
     const pad = n => String(n).padStart(2, '0');
     const days = ['יום א׳','יום ב׳','יום ג׳','יום ד׳','יום ה׳','יום ו׳','שבת'];
-    set('v46Date', `${pad(start.getDate())}/${pad(start.getMonth()+1)}/${start.getFullYear()}`);
-    set('v46Day', days[start.getDay()]);
-    set('v46Hours', `${pad(start.getHours())}:${pad(start.getMinutes())} - עכשיו`);
-    set('v46Pay', `₪${pay.toFixed(2)}`);
-    set('v46Duration', `${h}:${pad(m)}`);
+    set('v47Date', `${pad(start.getDate())}/${pad(start.getMonth()+1)}/${start.getFullYear()}`);
+    set('v47Day', days[start.getDay()]);
+    set('v47Hours', `${pad(start.getHours())}:${pad(start.getMinutes())} - עכשיו`);
+    set('v47Pay', `₪${pay.toFixed(2)}`);
+    set('v47Duration', `${h}:${pad(m)}`);
   };
   refresh();
   setInterval(refresh, 30000);
@@ -296,7 +307,7 @@ async function refreshIfNeeded() {
   const start = state.activeStart ? Number(state.activeStart) : null;
   if (start !== lastObservedStart || state.notifyEnabled) await syncActiveShift();
 }
-applyV46Dashboard();
+applyV47Dashboard();
 updateNotificationHelp();
 setInterval(refreshIfNeeded, 2500);
 window.addEventListener('focus', refreshIfNeeded);
