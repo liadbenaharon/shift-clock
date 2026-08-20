@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shift-clock-push-v1';
+const CACHE_NAME = 'shift-clock-push-v2';
 const CLIENT_SCRIPT_TAG = '<script type="module" src="./push-client.js"></script>';
 
 self.addEventListener('install', event => {
@@ -12,6 +12,29 @@ self.addEventListener('activate', event => {
   ]));
 });
 
+function patchAppHtml(html) {
+  // The old static-site reminder used midnight/22:00 and only worked while the page was alive.
+  // Disable it in the served page so it cannot duplicate the new remote 8:30 push reminder.
+  html = html.replace(
+    /function checkForgottenShiftNotification\(\)\{[\s\S]*?\n  \}\n  setInterval\(checkForgottenShiftNotification, 60\*1000\);/,
+    "function checkForgottenShiftNotification(){ /* remote push reminder handles this now */ }"
+  );
+
+  html = html.replace(
+    '🔔 התראה אם משמרת נשארה פתוחה (00:00 בימי חול, 22:00 בשישי-שבת)',
+    '🔔 התראה אחרי 8 שעות ו־30 דקות אם המשמרת עדיין פתוחה'
+  );
+  html = html.replace(
+    'לא מובטח - עובד רק כשהדפדפן פתוח ברקע, לא כשהאפליקציה סגורה לגמרי.',
+    'Push מרחוק — יכול להגיע גם כשהאפליקציה סגורה לגמרי.'
+  );
+
+  if (!html.includes('push-client.js')) {
+    html = html.replace('</body>', `${CLIENT_SCRIPT_TAG}\n</body>`);
+  }
+  return html;
+}
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.mode === 'navigate') {
@@ -20,10 +43,7 @@ self.addEventListener('fetch', event => {
         const response = await fetch(req, { cache: 'no-store' });
         const type = response.headers.get('content-type') || '';
         if (!type.includes('text/html')) return response;
-        let html = await response.text();
-        if (!html.includes('push-client.js')) {
-          html = html.replace('</body>', `${CLIENT_SCRIPT_TAG}\n</body>`);
-        }
+        const html = patchAppHtml(await response.text());
         const headers = new Headers(response.headers);
         headers.delete('content-length');
         headers.set('cache-control', 'no-store');
