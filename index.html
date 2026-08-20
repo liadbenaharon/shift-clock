@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <!-- 
   שעון נוכחות · מעקב שעות ושכר
-  גרסה: v3.9
+  גרסה: v4.1
 -->
-<title>שעון נוכחות · מעקב שעות ושכר v3.9</title>
+<title>שעון נוכחות · מעקב שעות ושכר v4.1</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F7A6D">
 <meta name="mobile-web-app-capable" content="yes">
@@ -390,6 +390,24 @@ Drop to add to agen
   .icon-btn:hover{ background:var(--card); color:var(--ink); }
   .icon-btn.del:hover{ background:var(--danger-light); color:var(--danger); border-color:#f2c9c5; }
 
+  /* v4.1: uniform shift history cards */
+  .shift-row{min-height:78px;align-items:center;}
+  .shift-row .date-col{width:64px;min-width:64px;flex:0 0 64px;}
+  .shift-row .mid{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;}
+  .shift-row .badges{min-height:18px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;margin-top:4px;}
+  .shift-row .pay-col{width:82px;min-width:82px;flex:0 0 82px;}
+  .shift-row .actions{width:66px;min-width:66px;flex:0 0 66px;justify-content:flex-end;}
+  @media (max-width:420px){
+    .shift-row{display:grid!important;grid-template-columns:64px minmax(0,1fr) 82px 66px;grid-template-areas:'date mid pay actions';gap:8px;min-height:86px;padding:12px 10px;align-items:center;flex-wrap:nowrap;}
+    .shift-row .date-col{grid-area:date;width:auto;min-width:0;}
+    .shift-row .mid{grid-area:mid;width:auto!important;order:initial!important;margin-top:0!important;text-align:center!important;min-width:0;}
+    .shift-row .pay-col{grid-area:pay;width:auto;min-width:0;text-align:left;}
+    .shift-row .actions{grid-area:actions;width:auto;min-width:0;display:flex;gap:4px;justify-content:flex-end;}
+    .shift-row .badges{min-height:18px;flex-wrap:nowrap;overflow:hidden;}
+    .shift-row .tag{white-space:nowrap;font-size:9px;padding:2px 4px;}
+    .shift-row .icon-btn{width:30px;height:30px;flex:0 0 30px;}
+  }
+
   .empty-state{
     text-align:center;
     padding:34px 20px;
@@ -511,7 +529,7 @@ Drop to add to agen
 
   <header class="top">
     <div>
-      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v3.9</span></h1>
+      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v4.1</span></h1>
       <div class="sub">מעקב שעות עבודה וחישוב שכר</div>
     </div>
     <button class="icon-btn" id="settingsBtn" title="הגדרות" style="width:auto;padding:0 12px;font-size:13px;font-weight:700;color:var(--ink);gap:6px;display:inline-flex;align-items:center;">
@@ -2885,7 +2903,7 @@ if ('serviceWorker' in navigator) {
   renderAll();
   handleLocationTriggerParam();
   checkForgottenShiftNotification();
-  import('./push-client.js').catch(err => console.warn('Push client load failed:', err));
+  import('./push-client.js?v=4.1').catch(err => console.warn('Push client load failed:', err));
   
   // Service Worker Registration for PWA
   if ('serviceWorker' in navigator) {
