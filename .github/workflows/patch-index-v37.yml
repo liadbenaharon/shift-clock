@@ -1,0 +1,53 @@
+name: Patch index for push client v3.7
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-index-v37.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch index.html safely
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Bump visible/document version only for this app update.
+          s = s.replace('v3.6', 'v3.7')
+
+          tag = '<script type="module" src="./push-client.js"></script>'
+          if tag not in s:
+              if '</body>' not in s:
+                  raise SystemExit('Could not find </body> in index.html')
+              s = s.replace('</body>', f'{tag}\n</body>', 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Verify patch
+        run: |
+          grep -F 'v3.7' index.html >/dev/null
+          grep -F '<script type="module" src="./push-client.js"></script>' index.html >/dev/null
+
+      - name: Commit index update
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then
+            echo 'No changes needed.'
+          else
+            git commit -m 'Connect push client and bump app to v3.7'
+            git push
+          fi
