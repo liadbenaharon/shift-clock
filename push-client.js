@@ -31,14 +31,14 @@ function readLocalState() {
   catch (_) { return {}; }
 }
 
-function applyV48Dashboard() {
-  document.title = document.title.replace(/v\d+\.\d+/, 'v4.8');
+function applyV49Dashboard() {
+  document.title = document.title.replace(/v\d+\.\d+/, 'v4.9');
   const version = document.querySelector('header.top h1 span');
-  if (version) version.textContent = 'v4.8';
+  if (version) version.textContent = 'v4.9';
 
-  if (!document.getElementById('dashboard-v48-style')) {
+  if (!document.getElementById('dashboard-v49-style')) {
     const style = document.createElement('style');
-    style.id = 'dashboard-v48-style';
+    style.id = 'dashboard-v49-style';
     style.textContent = `
       :root.dark{--cream:#0b1017;--card:#121a24;--line:#263444;--muted:#8f9cab;--surface-dark:#0f1824;}
       body{background:radial-gradient(circle at 80% 0%,rgba(47,122,109,.14),transparent 28%),var(--cream);}
@@ -47,30 +47,29 @@ function applyV48Dashboard() {
       header.top h1{font-size:30px!important;line-height:1.05;display:flex;align-items:center;gap:9px;}
       header.top h1 span{font-size:18px!important;color:#61dc79;font-weight:700;}
       header.top .sub{font-size:15px!important;margin-top:5px;}
-      .rate-pill{background:#111923!important;border:1px solid #314255!important;border-radius:17px!important;padding:10px 14px!important;}
-      .rate-pill input{font-size:18px!important;width:72px!important;}
+      #settingsBtn{display:none!important;}
       .clock-card{background:linear-gradient(180deg,#111d2b 0%,#0f1824 100%)!important;border:1px solid #2b3c4f!important;border-radius:26px!important;padding:22px 20px!important;box-shadow:0 18px 42px rgba(0,0,0,.25)!important;}
       .clock-card .status-line{font-size:16px!important;color:#9aa7b5!important;}
       #timerDigits{font-size:clamp(58px,16vw,88px)!important;letter-spacing:.015em!important;margin:18px 0 6px!important;}
       #timerSub{font-size:18px!important;color:#9ba8b7!important;}
       #timerSub b{color:#f1b53b!important;font-size:23px!important;}
-      .v48-info-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #2d3e50;border-bottom:1px solid #2d3e50;margin:24px 0 18px;padding:20px 0;}
-      .v48-info{padding:0 10px;text-align:center;border-inline-start:1px solid #2d3e50;}
-      .v48-info:first-child{border-inline-start:none;}
-      .v48-info .ico{font-size:22px;display:block;margin-bottom:7px;}
-      .v48-info .lbl{font-size:13px;color:#9aa6b4;}
-      .v48-info .val{font-size:18px;font-weight:800;margin-top:2px;white-space:nowrap;}
-      .v48-info .sub{font-size:12px;color:#7f8d9d;margin-top:2px;}
-      .v48-info.pay .val{color:#62dd7a;}
-      .v48-tag-title{font-size:15px;font-weight:700;color:#98a5b4;margin:10px 0;}
-      .v48-tags{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
-      .v48-chip{border-radius:999px;padding:7px 13px;border:1px solid #3f5872;background:#14263a;color:#d9e7f7;font-size:13px;font-weight:700;}
-      .v48-chip.orange{border-color:#7f5617;background:#2a2111;color:#efb34a;}
-      .v48-chip.purple{border-color:#67427d;background:#24192d;color:#d3a0ec;}
-      .v48-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:12px!important;margin-top:18px!important;}
-      .v48-actions .clock-btn,.v48-actions #cancelShiftBtn{min-height:92px!important;border-radius:22px!important;font-size:23px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;}
-      .v48-actions .clock-btn.stop{background:#111923!important;border:2px solid #57d975!important;color:white!important;}
-      .v48-actions #cancelShiftBtn{background:#111923!important;border:2px solid #ff5858!important;color:white!important;}
+      .v49-info-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #2d3e50;border-bottom:1px solid #2d3e50;margin:24px 0 18px;padding:20px 0;}
+      .v49-info{padding:0 10px;text-align:center;border-inline-start:1px solid #2d3e50;}
+      .v49-info:first-child{border-inline-start:none;}
+      .v49-info .ico{font-size:22px;display:block;margin-bottom:7px;}
+      .v49-info .lbl{font-size:13px;color:#9aa6b4;}
+      .v49-info .val{font-size:18px;font-weight:800;margin-top:2px;white-space:nowrap;}
+      .v49-info .sub{font-size:12px;color:#7f8d9d;margin-top:2px;}
+      .v49-info.pay .val{color:#62dd7a;}
+      .v49-tag-title{font-size:15px;font-weight:700;color:#98a5b4;margin:10px 0;}
+      .v49-tags{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
+      .v49-chip{border-radius:999px;padding:7px 13px;border:1px solid #3f5872;background:#14263a;color:#d9e7f7;font-size:13px;font-weight:700;}
+      .v49-chip.orange{border-color:#7f5617;background:#2a2111;color:#efb34a;}
+      .v49-chip.purple{border-color:#67427d;background:#24192d;color:#d3a0ec;}
+      .v49-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:12px!important;margin-top:18px!important;}
+      .v49-actions .clock-btn,.v49-actions #cancelShiftBtn{min-height:92px!important;border-radius:22px!important;font-size:23px!important;font-weight:900!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;}
+      .v49-actions .clock-btn.stop{background:#111923!important;border:2px solid #57d975!important;color:white!important;}
+      .v49-actions #cancelShiftBtn{background:#111923!important;border:2px solid #ff5858!important;color:white!important;}
       .summary-card,.totals-row>div,.shift-row{background:#131b25!important;border:1px solid #293847!important;border-radius:20px!important;box-shadow:none!important;}
       .summary-card{min-height:118px!important;display:flex;flex-direction:column;align-items:center;justify-content:center;}
       .summary-card .value{font-size:27px!important;}
@@ -81,61 +80,59 @@ function applyV48Dashboard() {
       .shift-row .actions{min-width:66px!important;}
       #sumExpenses,[for="editExpenses"],#editExpenses,.expense,.expenses,.expenses-row{display:none!important;}
 
-      .v48-bottom-nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(900px,100%);z-index:9999;display:grid;grid-template-columns:repeat(4,1fr);padding:11px 14px calc(13px + env(safe-area-inset-bottom));background:rgba(12,18,26,.97);backdrop-filter:blur(16px);border:1px solid #283747;border-bottom:none;border-radius:22px 22px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.25);}
-      .v48-nav{text-align:center;color:#8f9baa;font-size:12px;cursor:pointer;user-select:none;}
-      .v48-nav .ico{display:block;font-size:22px;line-height:1;margin-bottom:5px;}
-      .v48-nav.active{color:#61dc79;font-weight:800;}
+      .v49-bottom-nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(900px,100%);z-index:9999;display:grid;grid-template-columns:repeat(4,1fr);padding:11px 14px calc(13px + env(safe-area-inset-bottom));background:rgba(12,18,26,.97);backdrop-filter:blur(16px);border:1px solid #283747;border-bottom:none;border-radius:22px 22px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.25);}
+      .v49-nav{text-align:center;color:#8f9baa;font-size:12px;cursor:pointer;user-select:none;}
+      .v49-nav .ico{display:block;font-size:22px;line-height:1;margin-bottom:5px;}
+      .v49-nav.active{color:#61dc79;font-weight:800;}
 
       #settingsOverlay.open{z-index:10000!important;padding-bottom:0!important;align-items:flex-start!important;justify-content:center!important;overflow-y:auto!important;}
       #settingsOverlay .modal{margin-top:12px!important;margin-bottom:100px!important;padding-bottom:24px!important;max-height:none!important;overflow:visible!important;}
-      #settingsOverlay .modal-actions{position:static!important;bottom:auto!important;z-index:auto!important;background:transparent!important;padding-top:12px!important;padding-bottom:12px!important;}
-      #settingsCancel,#settingsSave{position:static!important;z-index:auto!important;}
-      body.v48-settings-open .v48-bottom-nav{z-index:10040!important;}
+      #settingsOverlay .modal-actions{position:static!important;background:transparent!important;padding-top:12px!important;padding-bottom:12px!important;}
 
-      /* Shift edit/clock-out modal: keep Save/Cancel permanently visible above the bottom nav. */
-      #editOverlay.open{z-index:10060!important;align-items:flex-start!important;overflow:hidden!important;padding:12px 0 calc(96px + env(safe-area-inset-bottom))!important;}
-      #editOverlay .modal{margin:0!important;max-height:calc(100vh - 118px - env(safe-area-inset-bottom))!important;overflow-y:auto!important;padding-bottom:110px!important;border-radius:20px!important;}
-      #editOverlay .modal-actions{position:sticky!important;bottom:0!important;z-index:10080!important;margin:18px -20px -110px!important;padding:12px 20px calc(12px + env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,rgba(11,16,23,.93),#0b1017 30%)!important;border-top:1px solid #293847!important;box-shadow:0 -10px 24px rgba(0,0,0,.28)!important;}
-      #editOverlay .modal-actions .btn{min-height:50px!important;font-size:16px!important;}
-      body.v48-edit-open .v48-bottom-nav{display:none!important;}
+      /* Clean clock-out/edit sheet. It opens at the top and the action row stays inside the sheet. */
+      #editOverlay.open{z-index:10060!important;align-items:flex-start!important;justify-content:center!important;overflow-y:auto!important;padding:12px 0 calc(100px + env(safe-area-inset-bottom))!important;}
+      #editOverlay .modal{margin:0!important;max-height:calc(100vh - 118px - env(safe-area-inset-bottom))!important;overflow-y:auto!important;padding:20px!important;border-radius:20px!important;}
+      #editOverlay .modal-actions{position:sticky!important;bottom:0!important;z-index:20!important;margin:18px 0 0!important;padding:12px 0 0!important;background:linear-gradient(180deg,rgba(11,16,23,0),#0b1017 26%,#0b1017 100%)!important;border-top:1px solid #293847!important;box-shadow:none!important;}
+      #editOverlay .modal-actions .btn{min-height:48px!important;font-size:16px!important;}
+      body.v49-edit-open .v49-bottom-nav{display:none!important;}
 
       @media(max-width:640px){
         header.top h1{font-size:26px!important;}
-        .v48-info-grid{grid-template-columns:repeat(2,1fr);row-gap:18px;}
-        .v48-info:nth-child(3){border-inline-start:none;}
-        .v48-actions .clock-btn,.v48-actions #cancelShiftBtn{min-height:86px!important;font-size:21px!important;}
-        #editOverlay .modal{border-radius:18px!important;}
+        .v49-info-grid{grid-template-columns:repeat(2,1fr);row-gap:18px;}
+        .v49-info:nth-child(3){border-inline-start:none;}
+        .v49-actions .clock-btn,.v49-actions #cancelShiftBtn{min-height:86px!important;font-size:21px!important;}
+        #editOverlay .modal{width:calc(100% - 16px)!important;border-radius:18px!important;}
       }
     `;
     document.head.appendChild(style);
   }
 
   const card = document.querySelector('.clock-card');
-  if (card && !card.querySelector('.v48-info-grid')) {
+  if (card && !card.querySelector('.v49-info-grid')) {
     const timerSub = document.getElementById('timerSub');
     const grid = document.createElement('div');
-    grid.className = 'v48-info-grid';
+    grid.className = 'v49-info-grid';
     grid.innerHTML = `
-      <div class="v48-info"><span class="ico">📅</span><div class="lbl">תאריך</div><div class="val" id="v48Date">—</div><div class="sub" id="v48Day">—</div></div>
-      <div class="v48-info"><span class="ico">🕒</span><div class="lbl">שעות</div><div class="val" id="v48Hours">—</div><div class="sub">זמן אמת</div></div>
-      <div class="v48-info pay"><span class="ico">💵</span><div class="lbl">שכר משוער</div><div class="val" id="v48Pay">—</div><div class="sub">עד כה</div></div>
-      <div class="v48-info"><span class="ico">⏱️</span><div class="lbl">משך</div><div class="val" id="v48Duration">—</div><div class="sub">שעות</div></div>`;
+      <div class="v49-info"><span class="ico">📅</span><div class="lbl">תאריך</div><div class="val" id="v49Date">—</div><div class="sub" id="v49Day">—</div></div>
+      <div class="v49-info"><span class="ico">🕒</span><div class="lbl">שעות</div><div class="val" id="v49Hours">—</div><div class="sub">זמן אמת</div></div>
+      <div class="v49-info pay"><span class="ico">💵</span><div class="lbl">שכר משוער</div><div class="val" id="v49Pay">—</div><div class="sub">עד כה</div></div>
+      <div class="v49-info"><span class="ico">⏱️</span><div class="lbl">משך</div><div class="val" id="v49Duration">—</div><div class="sub">שעות</div></div>`;
     if (timerSub) timerSub.insertAdjacentElement('afterend', grid);
     const title = document.createElement('div');
-    title.className = 'v48-tag-title';
+    title.className = 'v49-tag-title';
     title.textContent = 'תגיות';
     grid.insertAdjacentElement('afterend', title);
     const tags = document.createElement('div');
-    tags.className = 'v48-tags';
-    tags.innerHTML = '<span class="v48-chip">🌙 ערב</span><span class="v48-chip orange">◔ שעות נוספות</span><span class="v48-chip purple">📅 יומי</span>';
+    tags.className = 'v49-tags';
+    tags.innerHTML = '<span class="v49-chip">🌙 ערב</span><span class="v49-chip orange">◔ שעות נוספות</span><span class="v49-chip purple">📅 יומי</span>';
     title.insertAdjacentElement('afterend', tags);
   }
 
   const clockBtn = document.getElementById('clockBtn');
   const cancelBtn = document.getElementById('cancelShiftBtn');
-  if (clockBtn && cancelBtn && !clockBtn.parentElement.classList.contains('v48-actions')) {
+  if (clockBtn && cancelBtn && !clockBtn.parentElement.classList.contains('v49-actions')) {
     const actions = document.createElement('div');
-    actions.className = 'v48-actions';
+    actions.className = 'v49-actions';
     clockBtn.parentElement.insertBefore(actions, clockBtn);
     actions.appendChild(clockBtn);
     actions.appendChild(cancelBtn);
@@ -158,26 +155,26 @@ function applyV48Dashboard() {
   };
   const closeSettings = () => {
     settingsOverlay?.classList.remove('open');
-    document.body.classList.remove('v48-settings-open');
+    document.body.classList.remove('v49-settings-open');
   };
   const openSettings = () => {
     settingsBtn?.click();
     setTimeout(() => {
       if (settingsOverlay?.classList.contains('open')) {
-        document.body.classList.add('v48-settings-open');
+        document.body.classList.add('v49-settings-open');
         resetSettingsToTop();
       }
     }, 0);
   };
 
-  if (!document.querySelector('.v48-bottom-nav')) {
+  if (!document.querySelector('.v49-bottom-nav')) {
     const nav = document.createElement('div');
-    nav.className = 'v48-bottom-nav';
-    nav.innerHTML = '<div class="v48-nav active" data-target="home"><span class="ico">⌂</span>בית</div><div class="v48-nav" data-target="history"><span class="ico">◷</span>היסטוריה</div><div class="v48-nav" data-target="reports"><span class="ico">▥</span>דיווחים</div><div class="v48-nav" data-target="settings"><span class="ico">⚙</span>הגדרות</div>';
+    nav.className = 'v49-bottom-nav';
+    nav.innerHTML = '<div class="v49-nav active" data-target="home"><span class="ico">⌂</span>בית</div><div class="v49-nav" data-target="history"><span class="ico">◷</span>היסטוריה</div><div class="v49-nav" data-target="reports"><span class="ico">▥</span>דיווחים</div><div class="v49-nav" data-target="settings"><span class="ico">⚙</span>הגדרות</div>';
     document.body.appendChild(nav);
 
     nav.addEventListener('click', (e) => {
-      const item = e.target.closest('.v48-nav');
+      const item = e.target.closest('.v49-nav');
       if (!item) return;
       const target = item.dataset.target;
       const wasSettingsOpen = !!settingsOverlay?.classList.contains('open');
@@ -189,14 +186,14 @@ function applyV48Dashboard() {
           nav.querySelector('[data-target="home"]')?.classList.add('active');
           return;
         }
-        nav.querySelectorAll('.v48-nav').forEach(x => x.classList.remove('active'));
+        nav.querySelectorAll('.v49-nav').forEach(x => x.classList.remove('active'));
         item.classList.add('active');
         openSettings();
         return;
       }
 
       if (wasSettingsOpen) closeSettings();
-      nav.querySelectorAll('.v48-nav').forEach(x => x.classList.remove('active'));
+      nav.querySelectorAll('.v49-nav').forEach(x => x.classList.remove('active'));
       item.classList.add('active');
       if (target === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
       if (target === 'history') (document.getElementById('historyList') || document.querySelector('.history-section'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -207,19 +204,19 @@ function applyV48Dashboard() {
   settingsBtn?.addEventListener('click', () => {
     setTimeout(() => {
       if (settingsOverlay?.classList.contains('open')) {
-        document.body.classList.add('v48-settings-open');
+        document.body.classList.add('v49-settings-open');
         resetSettingsToTop();
       } else {
-        document.body.classList.remove('v48-settings-open');
+        document.body.classList.remove('v49-settings-open');
       }
     }, 0);
   });
-  document.getElementById('settingsCancel')?.addEventListener('click', () => document.body.classList.remove('v48-settings-open'));
-  document.getElementById('settingsSave')?.addEventListener('click', () => document.body.classList.remove('v48-settings-open'));
+  document.getElementById('settingsCancel')?.addEventListener('click', () => document.body.classList.remove('v49-settings-open'));
+  document.getElementById('settingsSave')?.addEventListener('click', () => document.body.classList.remove('v49-settings-open'));
 
   const syncEditOverlayState = () => {
     const open = !!editOverlay?.classList.contains('open');
-    document.body.classList.toggle('v48-edit-open', open);
+    document.body.classList.toggle('v49-edit-open', open);
     if (open) {
       editOverlay.scrollTop = 0;
       const modal = editOverlay.querySelector('.modal');
@@ -236,7 +233,7 @@ function applyV48Dashboard() {
     const startMs = Number(state.activeStart || 0);
     const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
     if (!startMs) {
-      set('v48Date', '—'); set('v48Day', '—'); set('v48Hours', '—'); set('v48Pay', '₪0.00'); set('v48Duration', '0:00');
+      set('v49Date', '—'); set('v49Day', '—'); set('v49Hours', '—'); set('v49Pay', '₪0.00'); set('v49Duration', '0:00');
       return;
     }
     const start = new Date(startMs);
@@ -248,11 +245,11 @@ function applyV48Dashboard() {
     const pay = rate * (elapsed / 3600000);
     const pad = n => String(n).padStart(2, '0');
     const days = ['יום א׳','יום ב׳','יום ג׳','יום ד׳','יום ה׳','יום ו׳','שבת'];
-    set('v48Date', `${pad(start.getDate())}/${pad(start.getMonth()+1)}/${start.getFullYear()}`);
-    set('v48Day', days[start.getDay()]);
-    set('v48Hours', `${pad(start.getHours())}:${pad(start.getMinutes())} - עכשיו`);
-    set('v48Pay', `₪${pay.toFixed(2)}`);
-    set('v48Duration', `${h}:${pad(m)}`);
+    set('v49Date', `${pad(start.getDate())}/${pad(start.getMonth()+1)}/${start.getFullYear()}`);
+    set('v49Day', days[start.getDay()]);
+    set('v49Hours', `${pad(start.getHours())}:${pad(start.getMinutes())} - עכשיו`);
+    set('v49Pay', `₪${pay.toFixed(2)}`);
+    set('v49Duration', `${h}:${pad(m)}`);
   };
   refresh();
   setInterval(refresh, 30000);
@@ -324,7 +321,7 @@ async function refreshIfNeeded() {
   const start = state.activeStart ? Number(state.activeStart) : null;
   if (start !== lastObservedStart || state.notifyEnabled) await syncActiveShift();
 }
-applyV48Dashboard();
+applyV49Dashboard();
 updateNotificationHelp();
 setInterval(refreshIfNeeded, 2500);
 window.addEventListener('focus', refreshIfNeeded);
