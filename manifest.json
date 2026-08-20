@@ -1,0 +1,12 @@
+{
+  "name": "שעון נוכחות · מעקב שעות ושכר",
+  "short_name": "שעון נוכחות",
+  "description": "מעקב משמרות, שעות ושכר",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#2F7A6D"
+}

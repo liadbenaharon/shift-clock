@@ -1,0 +1,11 @@
+{
+  "name": "shift-clock-reminders",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "send-reminders": "node scripts/send-shift-reminders.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0"
+  }
+}
