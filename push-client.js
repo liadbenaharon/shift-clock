@@ -15,7 +15,8 @@ const firebaseConfig = {
 const VAPID_PUBLIC_KEY = 'BEX0RBD1Nim-a7ZKM0u5FH_c4kI2WCmQmDxuCrTULCOIQAtUHiDflf1zg4cH8asiBBrHuS7pe7SdAPVeHstEAmA';
 const STORAGE_KEY = 'ilShiftTrackerData_v1';
 const ACTIVE_COLLECTION = 'activeShifts';
-const REMINDER_DELAY_MS = (8 * 60 + 30) * 60 * 1000;
+// TEMPORARY TEST: 5 minutes. Restore to 8h30 after push verification.
+const REMINDER_DELAY_MS = 5 * 60 * 1000;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -46,12 +47,12 @@ function updateNotificationHelp() {
   const label = document.querySelector('label[for="settingsNotify"]');
   if (label) {
     const firstText = Array.from(label.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
-    if (firstText) firstText.textContent = '\n        🔔 התראה אחרי 8 שעות ו־30 דקות אם המשמרת עדיין פתוחה\n        ';
+    if (firstText) firstText.textContent = '\n        🔔 בדיקת Push: התראה אחרי 5 דקות אם המשמרת עדיין פתוחה\n        ';
     const desc = label.querySelector('div');
     if (desc) {
       desc.textContent = isIos() && !isStandalone()
         ? 'באייפון: יש להוסיף את האתר למסך הבית, לפתוח משם ולאשר התראות.'
-        : 'ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';
+        : 'בדיקה זמנית: ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';
     }
   }
 }
@@ -158,14 +159,9 @@ async function refreshIfNeeded() {
 }
 
 updateNotificationHelp();
-
-// The existing settings UI requests Notification permission from a user gesture.
-// This loop waits for that grant, obtains the FCM token, and mirrors shift start/stop to Firestore.
 setInterval(refreshIfNeeded, 2500);
 window.addEventListener('focus', refreshIfNeeded);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshIfNeeded();
 });
-
-// First sync after the page and the main app script finish restoring state.
 setTimeout(refreshIfNeeded, 600);
