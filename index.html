@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <!-- 
   שעון נוכחות · מעקב שעות ושכר
-  גרסה: v3.6
+  גרסה: v3.8
 -->
-<title>שעון נוכחות · מעקב שעות ושכר v3.6</title>
+<title>שעון נוכחות · מעקב שעות ושכר v3.8</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F7A6D">
 <meta name="mobile-web-app-capable" content="yes">
@@ -511,7 +511,7 @@ Drop to add to agen
 
   <header class="top">
     <div>
-      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v3.6</span></h1>
+      <h1>שעון נוכחות <span style="font-size:12px;color:var(--muted);font-weight:400;">v3.8</span></h1>
       <div class="sub">מעקב שעות עבודה וחישוב שכר</div>
     </div>
     <button class="icon-btn" id="settingsBtn" title="הגדרות" style="width:auto;padding:0 12px;font-size:13px;font-weight:700;color:var(--ink);gap:6px;display:inline-flex;align-items:center;">
@@ -2885,6 +2885,7 @@ if ('serviceWorker' in navigator) {
   renderAll();
   handleLocationTriggerParam();
   checkForgottenShiftNotification();
+  import('./push-client.js').catch(err => console.warn('Push client load failed:', err));
   
   // Service Worker Registration for PWA
   if ('serviceWorker' in navigator) {
