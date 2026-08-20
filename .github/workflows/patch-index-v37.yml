@@ -1,4 +1,4 @@
-name: Safely connect push client v3.8
+name: Safely bump app to v3.9
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch index.html safely
+      - name: Bump version only
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -24,20 +24,11 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # Version bump for this app update.
-          s = s.replace('v3.7', 'v3.8')
-          s = s.replace('v3.6', 'v3.8')
+          s = s.replace('v3.8', 'v3.9')
 
-          # Load push-client.js from inside the existing app JavaScript.
-          # Dynamic import is non-blocking and a failure cannot stop the main UI.
-          marker = "  checkForgottenShiftNotification();\n"
-          loader = "  import('./push-client.js').catch(err => console.warn('Push client load failed:', err));\n"
-
-          if s.count(marker) != 1:
-              raise SystemExit(f'Expected exactly one boot marker, found {s.count(marker)}')
-
-          if loader not in s:
-              s = s.replace(marker, marker + loader, 1)
+          loader = "import('./push-client.js').catch(err => console.warn('Push client load failed:', err));"
+          if s.count(loader) != 1:
+              raise SystemExit(f'Expected exactly one existing push loader, found {s.count(loader)}')
 
           p.write_text(s, encoding='utf-8')
           PY
@@ -48,9 +39,9 @@ jobs:
           from pathlib import Path
           s = Path('index.html').read_text(encoding='utf-8')
           loader = "import('./push-client.js').catch(err => console.warn('Push client load failed:', err));"
-          assert s.count(loader) == 1, 'push client loader must exist exactly once'
-          assert 'v3.8' in s, 'version was not bumped to v3.8'
-          assert "checkForgottenShiftNotification();\n  import('./push-client.js')" in s, 'loader is not in the app boot section'
+          assert s.count(loader) == 1, 'push client loader must remain exactly once'
+          assert 'v3.9' in s, 'version was not bumped to v3.9'
+          assert 'v3.8' not in s, 'old version v3.8 remains in index.html'
           PY
 
       - name: Commit index update
@@ -61,6 +52,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No changes needed.'
           else
-            git commit -m 'Safely connect push client and bump app to v3.8'
+            git commit -m 'Bump app to v3.9'
             git push
           fi
