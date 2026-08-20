@@ -26,141 +26,104 @@ let currentToken = null;
 let syncRunning = false;
 let lastObservedStart = Symbol('initial');
 
-function readLocalState() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  } catch (_) {
-    return {};
+function applyUiV40() {
+  document.title = document.title.replace(/v\d+\.\d+/, 'v4.0');
+  const version = document.querySelector('header.top h1 span');
+  if (version) version.textContent = 'v4.0';
+  if (!document.getElementById('uniform-shift-cards-v40')) {
+    const style = document.createElement('style');
+    style.id = 'uniform-shift-cards-v40';
+    style.textContent = `
+      .shift-row{min-height:78px;align-items:center;}
+      .shift-row .date-col{width:64px;min-width:64px;flex:0 0 64px;}
+      .shift-row .mid{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;}
+      .shift-row .badges{min-height:18px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;margin-top:4px;}
+      .shift-row .pay-col{width:82px;min-width:82px;flex:0 0 82px;}
+      .shift-row .actions{width:66px;min-width:66px;flex:0 0 66px;justify-content:flex-end;}
+      @media (max-width:420px){
+        .shift-row{display:grid!important;grid-template-columns:64px minmax(0,1fr) 82px 66px;grid-template-areas:'date mid pay actions';gap:8px;min-height:86px;padding:12px 10px;align-items:center;}
+        .shift-row .date-col{grid-area:date;width:auto;min-width:0;}
+        .shift-row .mid{grid-area:mid;width:auto!important;order:initial!important;margin-top:0!important;text-align:center!important;min-width:0;}
+        .shift-row .pay-col{grid-area:pay;width:auto;min-width:0;text-align:left;}
+        .shift-row .actions{grid-area:actions;width:auto;min-width:0;display:flex;gap:4px;justify-content:flex-end;}
+        .shift-row .badges{min-height:18px;flex-wrap:nowrap;overflow:hidden;}
+        .shift-row .tag{white-space:nowrap;font-size:9px;padding:2px 4px;}
+        .shift-row .icon-btn{width:30px;height:30px;flex:0 0 30px;}
+      }
+    `;
+    document.head.appendChild(style);
   }
 }
 
-function isIos() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function readLocalState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch (_) { return {}; }
 }
-
-function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
+function isIos() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
 function updateNotificationHelp() {
   const label = document.querySelector('label[for="settingsNotify"]');
   if (label) {
     const firstText = Array.from(label.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
     if (firstText) firstText.textContent = '\n        🔔 התראה אם משמרת נשארה פתוחה יותר מ־8 שעות ו־30 דקות\n        ';
     const desc = label.querySelector('div');
-    if (desc) {
-      desc.textContent = isIos() && !isStandalone()
-        ? 'באייפון: יש להוסיף את האתר למסך הבית, לפתוח משם ולאשר התראות.'
-        : 'ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';
-    }
+    if (desc) desc.textContent = isIos() && !isStandalone() ? 'באייפון: יש להוסיף את האתר למסך הבית, לפתוח משם ולאשר התראות.' : 'ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';
   }
 }
-
 async function ensureAnonymousUser() {
   if (currentUser) return currentUser;
-  if (auth.currentUser) {
-    currentUser = auth.currentUser;
-    return currentUser;
-  }
-  const credential = await signInAnonymously(auth);
-  currentUser = credential.user;
-  return currentUser;
+  if (auth.currentUser) { currentUser = auth.currentUser; return currentUser; }
+  const credential = await signInAnonymously(auth); currentUser = credential.user; return currentUser;
 }
-
 async function getServiceWorkerRegistration() {
   if (!('serviceWorker' in navigator)) throw new Error('Service Worker is not supported');
   let registration = await navigator.serviceWorker.getRegistration('./');
   if (!registration) registration = await navigator.serviceWorker.register('./service-worker.js');
-  await navigator.serviceWorker.ready;
-  return registration;
+  await navigator.serviceWorker.ready; return registration;
 }
-
 async function ensurePushToken() {
   const state = readLocalState();
   if (!state.notifyEnabled) return null;
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return null;
   if (!(await isMessagingSupported())) return null;
-
   if (currentToken) return currentToken;
   const registration = await getServiceWorkerRegistration();
   const messaging = getMessaging(app);
-  currentToken = await getToken(messaging, {
-    vapidKey: VAPID_PUBLIC_KEY,
-    serviceWorkerRegistration: registration
-  });
+  currentToken = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY, serviceWorkerRegistration: registration });
   return currentToken || null;
 }
-
 async function syncActiveShift() {
-  if (syncRunning) return;
-  syncRunning = true;
+  if (syncRunning) return; syncRunning = true;
   try {
     const state = readLocalState();
     const activeStart = state.activeStart ? Number(state.activeStart) : null;
     const notifyEnabled = !!state.notifyEnabled;
-
-    if (!notifyEnabled) {
-      if (currentUser) await deleteDoc(doc(db, ACTIVE_COLLECTION, currentUser.uid)).catch(() => {});
-      lastObservedStart = activeStart;
-      return;
-    }
-
+    if (!notifyEnabled) { if (currentUser) await deleteDoc(doc(db, ACTIVE_COLLECTION, currentUser.uid)).catch(() => {}); lastObservedStart = activeStart; return; }
     const user = await ensureAnonymousUser();
     const ref = doc(db, ACTIVE_COLLECTION, user.uid);
-
-    if (!activeStart) {
-      await deleteDoc(ref).catch(() => {});
-      lastObservedStart = null;
-      return;
-    }
-
+    if (!activeStart) { await deleteDoc(ref).catch(() => {}); lastObservedStart = null; return; }
     const token = await ensurePushToken();
-    if (!token) {
-      lastObservedStart = activeStart;
-      return;
-    }
-
+    if (!token) { lastObservedStart = activeStart; return; }
     const existing = await getDoc(ref);
     const existingData = existing.exists() ? existing.data() : null;
     const sameShift = existingData && Number(existingData.startedAtMs) === activeStart;
-
     if (sameShift) {
-      await setDoc(ref, {
-        token,
-        updatedAt: serverTimestamp(),
-        platform: isIos() ? 'ios-web' : 'web'
-      }, { merge: true });
+      await setDoc(ref, { token, updatedAt: serverTimestamp(), platform: isIos() ? 'ios-web' : 'web' }, { merge: true });
     } else {
-      await setDoc(ref, {
-        uid: user.uid,
-        token,
-        startedAtMs: activeStart,
-        remindAtMs: activeStart + REMINDER_DELAY_MS,
-        notificationSent: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        platform: isIos() ? 'ios-web' : 'web'
-      });
+      await setDoc(ref, { uid: user.uid, token, startedAtMs: activeStart, remindAtMs: activeStart + REMINDER_DELAY_MS, notificationSent: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), platform: isIos() ? 'ios-web' : 'web' });
     }
-
     lastObservedStart = activeStart;
-  } catch (err) {
-    console.warn('Push reminder sync failed:', err);
-  } finally {
-    syncRunning = false;
-  }
+  } catch (err) { console.warn('Push reminder sync failed:', err); }
+  finally { syncRunning = false; }
 }
-
 async function refreshIfNeeded() {
   const state = readLocalState();
   const start = state.activeStart ? Number(state.activeStart) : null;
   if (start !== lastObservedStart || state.notifyEnabled) await syncActiveShift();
 }
-
+applyUiV40();
 updateNotificationHelp();
 setInterval(refreshIfNeeded, 2500);
 window.addEventListener('focus', refreshIfNeeded);
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') refreshIfNeeded();
-});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshIfNeeded(); });
 setTimeout(refreshIfNeeded, 600);
