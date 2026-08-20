@@ -19,6 +19,16 @@ const messaging = firebase.messaging();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 
+// Handle local test notifications requested by the app UI.
+self.addEventListener('message', event => {
+  const data = event.data || {};
+  if (data.type !== 'SHOW_NOTIFICATION') return;
+
+  const title = data.title || 'שעון נוכחות';
+  const options = data.options || {};
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
 messaging.onBackgroundMessage(payload => {
   const data = payload.data || {};
   const title = data.title || 'שעון נוכחות';
