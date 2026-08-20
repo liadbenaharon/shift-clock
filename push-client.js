@@ -15,8 +15,8 @@ const firebaseConfig = {
 const VAPID_PUBLIC_KEY = 'BEX0RBD1Nim-a7ZKM0u5FH_c4kI2WCmQmDxuCrTULCOIQAtUHiDflf1zg4cH8asiBBrHuS7pe7SdAPVeHstEAmA';
 const STORAGE_KEY = 'ilShiftTrackerData_v1';
 const ACTIVE_COLLECTION = 'activeShifts';
-// TEMPORARY TEST: 5 minutes. Restore to 8h30 after push verification.
-const REMINDER_DELAY_MS = 5 * 60 * 1000;
+// TEMPORARY QUICK TEST: 1 minute. Restore to 8h30 after push verification.
+const REMINDER_DELAY_MS = 1 * 60 * 1000;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -47,7 +47,7 @@ function updateNotificationHelp() {
   const label = document.querySelector('label[for="settingsNotify"]');
   if (label) {
     const firstText = Array.from(label.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
-    if (firstText) firstText.textContent = '\n        🔔 בדיקת Push: התראה אחרי 5 דקות אם המשמרת עדיין פתוחה\n        ';
+    if (firstText) firstText.textContent = '\n        🔔 בדיקת Push מהירה: התראה אחרי דקה אם המשמרת עדיין פתוחה\n        ';
     const desc = label.querySelector('div');
     if (desc) {
       desc.textContent = isIos() && !isStandalone()
