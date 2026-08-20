@@ -15,8 +15,7 @@ const firebaseConfig = {
 const VAPID_PUBLIC_KEY = 'BEX0RBD1Nim-a7ZKM0u5FH_c4kI2WCmQmDxuCrTULCOIQAtUHiDflf1zg4cH8asiBBrHuS7pe7SdAPVeHstEAmA';
 const STORAGE_KEY = 'ilShiftTrackerData_v1';
 const ACTIVE_COLLECTION = 'activeShifts';
-// TEMPORARY QUICK TEST: 1 minute. Restore to 8h30 after push verification.
-const REMINDER_DELAY_MS = 1 * 60 * 1000;
+const REMINDER_DELAY_MS = (8 * 60 + 30) * 60 * 1000;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -47,12 +46,12 @@ function updateNotificationHelp() {
   const label = document.querySelector('label[for="settingsNotify"]');
   if (label) {
     const firstText = Array.from(label.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
-    if (firstText) firstText.textContent = '\n        🔔 בדיקת Push מהירה: התראה אחרי דקה אם המשמרת עדיין פתוחה\n        ';
+    if (firstText) firstText.textContent = '\n        🔔 התראה אם משמרת נשארה פתוחה יותר מ־8 שעות ו־30 דקות\n        ';
     const desc = label.querySelector('div');
     if (desc) {
       desc.textContent = isIos() && !isStandalone()
         ? 'באייפון: יש להוסיף את האתר למסך הבית, לפתוח משם ולאשר התראות.'
-        : 'בדיקה זמנית: ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';
+        : 'ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';
     }
   }
 }
