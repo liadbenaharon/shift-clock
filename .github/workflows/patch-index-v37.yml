@@ -23,22 +23,32 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # One-time v3.7 patch.
           s = s.replace('v3.6', 'v3.7')
 
           tag = '<script type="module" src="./push-client.js"></script>'
-          if tag not in s:
-              if '</body>' not in s:
-                  raise SystemExit('Could not find </body> in index.html')
-              s = s.replace('</body>', f'{tag}\n</body>', 1)
+          # The same tag may appear inside the generated payslip HTML string.
+          # What matters is that the real app page loads it immediately before
+          # the final </body> tag.
+          closing = '</body>\n</html>'
+          expected = f'{tag}\n{closing}'
+          if expected not in s:
+              pos = s.rfind(closing)
+              if pos == -1:
+                  raise SystemExit('Could not find final </body></html> in index.html')
+              s = s[:pos] + tag + '\n' + s[pos:]
 
           p.write_text(s, encoding='utf-8')
           PY
 
       - name: Verify patch
         run: |
-          grep -F 'v3.7' index.html >/dev/null
-          grep -F '<script type="module" src="./push-client.js"></script>' index.html >/dev/null
+          python - <<'PY'
+          from pathlib import Path
+          s = Path('index.html').read_text(encoding='utf-8')
+          tag = '<script type="module" src="./push-client.js"></script>'
+          assert f'{tag}\n</body>\n</html>' in s, 'push-client.js is not loaded by the real app page'
+          assert 'v3.7' in s
+          PY
 
       - name: Commit index update
         run: |
@@ -48,6 +58,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No changes needed.'
           else
-            git commit -m 'Connect push client and bump app to v3.7'
+            git commit -m 'Connect push client to main app page'
             git push
           fi
