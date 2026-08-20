@@ -1,30 +1,51 @@
-// Emergency recovery service worker.
-// This intentionally stops intercepting the app and unregisters itself so the
-// original index.html is served unchanged. Existing localStorage data is not
-// deleted or modified.
+// Service worker for Shift Clock push notifications.
+// It intentionally does not intercept fetch requests or cache app files,
+// so updating this worker cannot replace or corrupt the existing app UI/data.
 
-self.addEventListener('install', () => {
-  self.skipWaiting();
+importScripts('https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.18.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: 'AIzaSyDDEElCF6iH35N9TYo7uqW0Oafm_E1E1Sw',
+  authDomain: 'shift-clock-19c2d.firebaseapp.com',
+  projectId: 'shift-clock-19c2d',
+  storageBucket: 'shift-clock-19c2d.firebasestorage.app',
+  messagingSenderId: '470768596231',
+  appId: '1:470768596231:web:2ac632c55e92a27c9c01a2'
 });
 
-self.addEventListener('activate', event => {
+const messaging = firebase.messaging();
+
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+
+messaging.onBackgroundMessage(payload => {
+  const data = payload.data || {};
+  const title = data.title || 'שעון נוכחות';
+  const options = {
+    body: data.body || 'יש לך תזכורת לגבי המשמרת הפעילה.',
+    tag: data.tag || 'shift-clock-reminder',
+    renotify: true,
+    data: { url: data.url || 'https://liadbenaharon.github.io/shift-clock/' }
+  };
+  return self.registration.showNotification(title, options);
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) ||
+    'https://liadbenaharon.github.io/shift-clock/';
+
   event.waitUntil((async () => {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(key => caches.delete(key)));
-    } catch (_) {}
-
-    try {
-      await self.registration.unregister();
-    } catch (_) {}
-
-    try {
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      for (const client of clients) {
-        try { client.postMessage({ type: 'SHIFT_CLOCK_SW_REMOVED' }); } catch (_) {}
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if ('focus' in client) {
+        try {
+          await client.navigate(targetUrl);
+        } catch (_) {}
+        return client.focus();
       }
-    } catch (_) {}
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
   })());
 });
-
-// No fetch handler on purpose: all requests go directly to the network.
