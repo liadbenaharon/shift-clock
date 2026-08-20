@@ -1,4 +1,4 @@
-const APP_VERSION = 'v5.6';
+const APP_VERSION = 'v6.0';
 let checkingUpdate = false;
 let reloadingForUpdate = false;
 
@@ -7,6 +7,28 @@ function applyDisplayedVersion(version) {
   if (badge) badge.textContent = version;
   document.title = document.title.replace(/v\d+\.\d+/, version);
 }
+
+// v6.0 diagnostics: when Google/Firebase sign-in fails, show the exact
+// Firebase Auth error code in the cloud-backup panel instead of hiding it
+// behind a generic message. This makes mobile popup failures diagnosable.
+const originalConsoleError = console.error.bind(console);
+console.error = (...args) => {
+  originalConsoleError(...args);
+  try {
+    if (String(args[0] || '').includes('Google backup sign-in failed')) {
+      const err = args.find(v => v && typeof v === 'object' && (v.code || v.message));
+      const code = err?.code ? String(err.code) : 'unknown-error';
+      const message = err?.message ? String(err.message) : '';
+      const status = document.getElementById('v59CloudStatus');
+      if (status) {
+        status.classList.add('v59-error');
+        status.textContent = `שגיאת התחברות: ${code}${message ? ` — ${message}` : ''}`;
+      }
+      const button = document.getElementById('v59GoogleBtn');
+      if (button) button.disabled = false;
+    }
+  } catch (_) {}
+};
 
 async function checkForAppUpdate(force = false) {
   if (checkingUpdate || reloadingForUpdate) return;
