@@ -23,7 +23,7 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # Bump visible/document version only for this app update.
+          # One-time v3.7 patch.
           s = s.replace('v3.6', 'v3.7')
 
           tag = '<script type="module" src="./push-client.js"></script>'
