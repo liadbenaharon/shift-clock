@@ -1,4 +1,4 @@
-name: Patch index for push client v3.7
+name: Safely connect push client v3.8
 
 on:
   push:
@@ -20,22 +20,24 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          s = s.replace('v3.6', 'v3.7')
+          # Version bump for this app update.
+          s = s.replace('v3.7', 'v3.8')
+          s = s.replace('v3.6', 'v3.8')
 
-          tag = '<script type="module" src="./push-client.js"></script>'
-          # The same tag may appear inside the generated payslip HTML string.
-          # What matters is that the real app page loads it immediately before
-          # the final </body> tag.
-          closing = '</body>\n</html>'
-          expected = f'{tag}\n{closing}'
-          if expected not in s:
-              pos = s.rfind(closing)
-              if pos == -1:
-                  raise SystemExit('Could not find final </body></html> in index.html')
-              s = s[:pos] + tag + '\n' + s[pos:]
+          # Load push-client.js from inside the existing app JavaScript.
+          # Dynamic import is non-blocking and a failure cannot stop the main UI.
+          marker = "  checkForgottenShiftNotification();\n"
+          loader = "  import('./push-client.js').catch(err => console.warn('Push client load failed:', err));\n"
+
+          if s.count(marker) != 1:
+              raise SystemExit(f'Expected exactly one boot marker, found {s.count(marker)}')
+
+          if loader not in s:
+              s = s.replace(marker, marker + loader, 1)
 
           p.write_text(s, encoding='utf-8')
           PY
@@ -45,9 +47,10 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           s = Path('index.html').read_text(encoding='utf-8')
-          tag = '<script type="module" src="./push-client.js"></script>'
-          assert f'{tag}\n</body>\n</html>' in s, 'push-client.js is not loaded by the real app page'
-          assert 'v3.7' in s
+          loader = "import('./push-client.js').catch(err => console.warn('Push client load failed:', err));"
+          assert s.count(loader) == 1, 'push client loader must exist exactly once'
+          assert 'v3.8' in s, 'version was not bumped to v3.8'
+          assert "checkForgottenShiftNotification();\n  import('./push-client.js')" in s, 'loader is not in the app boot section'
           PY
 
       - name: Commit index update
@@ -58,6 +61,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No changes needed.'
           else
-            git commit -m 'Connect push client to main app page'
+            git commit -m 'Safely connect push client and bump app to v3.8'
             git push
           fi
