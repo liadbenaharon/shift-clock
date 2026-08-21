@@ -50,7 +50,9 @@ async function nativeGoogleBackup() {
     const nativeAuth = getNativeFirebaseAuth();
     if (!nativeAuth?.signInWithGoogle) throw new Error('native-auth-plugin-unavailable');
 
-    const result = await nativeAuth.signInWithGoogle({ useCredentialManager: true });
+    // Credential Manager can return "No credentials available" on some Android/Samsung setups.
+    // Use the legacy Google Sign-In flow, which presents the account chooser reliably.
+    const result = await nativeAuth.signInWithGoogle({ useCredentialManager: false });
     const idToken = result?.credential?.idToken;
     const accessToken = result?.credential?.accessToken;
     if (!idToken && !accessToken) throw new Error('native-google-credential-missing');
@@ -81,8 +83,9 @@ async function nativeGoogleBackup() {
     console.error('Native Google sign-in failed:', err);
     const code = String(err?.code || err?.message || 'unknown');
     let message = `ההתחברות באפליקציה נכשלה (${code}).`;
-    if (code.includes('12500') || code.includes('DEVELOPER_ERROR')) message = 'Google Sign-In עדיין לא מאושר לחתימת האפליקציה. צריך להוסיף SHA-1 ב-Firebase.';
+    if (code.includes('12500') || code.includes('DEVELOPER_ERROR')) message = 'Google Sign-In עדיין לא מאושר לחתימת האפליקציה. צריך לבדוק SHA-1 ו-OAuth ב-Firebase.';
     if (code.includes('cancel') || code.includes('CANCELED')) message = 'ההתחברות ל-Google בוטלה.';
+    if (code.includes('No credentials available')) message = 'לא נמצא חשבון Google זמין במכשיר. ודא שיש חשבון Google מחובר למכשיר ונסה שוב.';
     setStatus(message, true);
     if (btn) btn.disabled = false;
   }
