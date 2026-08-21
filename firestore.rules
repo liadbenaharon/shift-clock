@@ -4,5 +4,9 @@ service cloud.firestore {
     match /activeShifts/{uid} {
       allow read, create, update, delete: if request.auth != null && request.auth.uid == uid;
     }
+
+    match /userBackups/{uid} {
+      allow read, create, update, delete: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }
