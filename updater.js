@@ -1,4 +1,4 @@
-const APP_VERSION = 'v6.4';
+const APP_VERSION = 'v6.5';
 let checkingUpdate = false;
 let reloadingForUpdate = false;
 
@@ -22,18 +22,21 @@ function authErrorText(err) {
   const code = String(err?.code || 'unknown-error');
   if (code === 'auth/popup-blocked') return 'הדפדפן חסם את חלון Google. אפשר חלונות קופצים לאתר ונסה שוב. (auth/popup-blocked)';
   if (code === 'auth/popup-closed-by-user') return 'חלון Google נסגר לפני שההתחברות הושלמה. נסה שוב. (auth/popup-closed-by-user)';
+  if (code === 'auth/cancelled-popup-request') return 'בקשת ההתחברות בוטלה לפני שהושלמה. נסה שוב פעם אחת. (auth/cancelled-popup-request)';
   if (code === 'auth/unauthorized-domain') return 'הדומיין עדיין לא מורשה ב-Firebase. (auth/unauthorized-domain)';
   if (code === 'auth/operation-not-allowed') return 'Google Sign-In לא מופעל ב-Firebase. (auth/operation-not-allowed)';
+  if (code === 'auth/network-request-failed') return 'הייתה שגיאת רשת בזמן ההתחברות ל-Google. (auth/network-request-failed)';
+  if (code === 'auth/web-storage-unsupported') return 'הדפדפן חוסם אחסון שנדרש להתחברות ל-Google. (auth/web-storage-unsupported)';
   const message = String(err?.message || '').trim();
   return `שגיאת התחברות: ${code}${message ? ` — ${message}` : ''}`;
 }
 
-// v6.4: Keep the auth helper on the same first-party origin as the app.
-// For GitHub Pages this avoids opening firebaseapp.com as a third-party helper
-// page that Samsung/Chrome can immediately close or block.
-const firebaseConfigV64 = {
+// v6.5: GitHub Pages is NOT Firebase Hosting, so the GitHub Pages host cannot
+// be used directly as authDomain because it does not serve Firebase's /__/auth
+// helper routes. Keep Firebase's real authDomain and use popup auth.
+const firebaseConfigV65 = {
   apiKey: 'AIzaSyDDEElCF6iH35N9TYo7uqW0Oafm_E1E1Sw',
-  authDomain: 'liadbenaharon.github.io',
+  authDomain: 'shift-clock-19c2d.firebaseapp.com',
   projectId: 'shift-clock-19c2d',
   storageBucket: 'shift-clock-19c2d.firebasestorage.app',
   messagingSenderId: '470768596231',
@@ -46,13 +49,17 @@ async function getPopupAuth() {
   popupAuthReady = (async () => {
     const appMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js');
     const authMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js');
-    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV64);
+    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV65);
     const auth = authMod.getAuth(app);
-    await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+    try {
+      await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+    } catch (_) {}
     return { auth, authMod };
   })();
   return popupAuthReady;
 }
+
+let googlePopupRunning = false;
 
 document.addEventListener('click', async event => {
   const button = event.target?.closest?.('#v59GoogleBtn');
@@ -60,20 +67,24 @@ document.addEventListener('click', async event => {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
+  if (googlePopupRunning) return;
+  googlePopupRunning = true;
   button.disabled = true;
-  setCloudMessage('פותח התחברות עם Google…');
+  setCloudMessage('פותח את Google… אם החלון נסגר לבד, תופיע כאן שגיאה מדויקת.');
   try {
     const { auth, authMod } = await getPopupAuth();
     const provider = new authMod.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     const result = await authMod.signInWithPopup(auth, provider);
-    if (!result?.user) throw new Error('Google sign-in returned no user');
+    if (!result?.user) throw Object.assign(new Error('Google sign-in returned no user'), { code: 'auth/no-user-returned' });
     localStorage.setItem('shift-clock-google-connected', '1');
     setCloudMessage('✓ התחברת ל-Google. מסנכרן את הגיבוי…');
     setTimeout(() => location.reload(), 1000);
   } catch (err) {
     console.error('Google backup direct popup failed:', err);
     setCloudMessage(authErrorText(err), true);
+  } finally {
+    googlePopupRunning = false;
     button.disabled = false;
   }
 }, true);
@@ -83,9 +94,9 @@ console.error = (...args) => {
   originalConsoleError(...args);
   try {
     const head = String(args[0] || '');
-    if (head.includes('Google backup sign-in failed')) {
+    if (head.includes('Google backup sign-in failed') || head.includes('Google backup direct popup failed')) {
       const err = args.find(v => v && typeof v === 'object' && (v.code || v.message));
-      setCloudMessage(authErrorText(err), true);
+      if (err) setCloudMessage(authErrorText(err), true);
     }
   } catch (_) {}
 };
