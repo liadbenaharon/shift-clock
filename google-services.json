@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "470768596231-uk8p6jv3q4qv3smlbfd0ch66fp3mgvgn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.liad.shiftclock",
+            "certificate_hash": "fb222e1ed59d5bc9b59226ac19cdc46d3bf38599"
+          }
+        },
+        {
           "client_id": "470768596231-30g852o9h5sfluc8j7iekp4nam3c94jk.apps.googleusercontent.com",
           "client_type": 3
         }
