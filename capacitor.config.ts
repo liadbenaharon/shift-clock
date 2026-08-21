@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.liadbenaharon.shiftclock',
   appName: 'שעון נוכחות',
-  webDir: '.',
+  webDir: 'web',
   server: {
     androidScheme: 'https'
   },
