@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "470768596231",
+    "firebase_url": "https://shift-clock-19c2d-default-rtdb.firebaseio.com",
+    "project_id": "shift-clock-19c2d",
+    "storage_bucket": "shift-clock-19c2d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:470768596231:android:25d872e6de9f92bd9c01a2",
+        "android_client_info": {
+          "package_name": "com.liad.shiftclock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdHlN0njQsNo7iY27X_I-bRYcWpljbyXY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
