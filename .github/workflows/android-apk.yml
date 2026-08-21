@@ -83,10 +83,19 @@ jobs:
       - name: Enable Google provider dependencies
         shell: bash
         run: |
-          cat >> android/variables.gradle <<'EOF'
-          rgcfaIncludeGoogle = true
-          androidxCredentialsVersion = '1.3.0'
-          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/variables.gradle')
+          s = p.read_text()
+          marker = '\n}'
+          pos = s.rfind(marker)
+          if pos < 0:
+              raise SystemExit('Could not find closing ext block in variables.gradle')
+          insert = "\n    rgcfaIncludeGoogle = true\n    androidxCredentialsVersion = '1.3.0'"
+          s = s[:pos] + insert + s[pos:]
+          p.write_text(s)
+          print(p.read_text())
+          PY
 
       - name: Add Firebase Android config
         run: cp google-services.json android/app/google-services.json
