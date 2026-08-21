@@ -1,4 +1,4 @@
-const APP_VERSION = 'v6.2';
+const APP_VERSION = 'v6.3';
 let checkingUpdate = false;
 let reloadingForUpdate = false;
 
@@ -20,11 +20,15 @@ function setCloudMessage(text, isError = false) {
 
 function authErrorText(err) {
   const code = String(err?.code || 'unknown-error');
+  if (code === 'auth/popup-blocked') return 'הדפדפן חסם את חלון Google. אפשר חלונות קופצים לאתר ונסה שוב. (auth/popup-blocked)';
+  if (code === 'auth/popup-closed-by-user') return 'חלון Google נסגר לפני שההתחברות הושלמה. נסה שוב. (auth/popup-closed-by-user)';
+  if (code === 'auth/unauthorized-domain') return 'הדומיין עדיין לא מורשה ב-Firebase. (auth/unauthorized-domain)';
+  if (code === 'auth/operation-not-allowed') return 'Google Sign-In לא מופעל ב-Firebase. (auth/operation-not-allowed)';
   const message = String(err?.message || '').trim();
   return `שגיאת התחברות: ${code}${message ? ` — ${message}` : ''}`;
 }
 
-const firebaseConfigV62 = {
+const firebaseConfigV63 = {
   apiKey: 'AIzaSyDDEElCF6iH35N9TYo7uqW0Oafm_E1E1Sw',
   authDomain: 'shift-clock-19c2d.firebaseapp.com',
   projectId: 'shift-clock-19c2d',
@@ -33,53 +37,24 @@ const firebaseConfigV62 = {
   appId: '1:470768596231:web:2ac632c55e92a27c9c01a2'
 };
 
-let redirectAuthReady = null;
-async function getRedirectAuth() {
-  if (redirectAuthReady) return redirectAuthReady;
-  redirectAuthReady = (async () => {
+let popupAuthReady = null;
+async function getPopupAuth() {
+  if (popupAuthReady) return popupAuthReady;
+  popupAuthReady = (async () => {
     const appMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js');
     const authMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js');
-    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV62);
+    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV63);
     const auth = authMod.getAuth(app);
     await authMod.setPersistence(auth, authMod.browserLocalPersistence);
     return { auth, authMod };
   })();
-  return redirectAuthReady;
+  return popupAuthReady;
 }
 
-async function finishRedirectLogin() {
-  const pending = sessionStorage.getItem('shift-clock-google-redirect-pending') === '1';
-  try {
-    const { auth, authMod } = await getRedirectAuth();
-    const result = await authMod.getRedirectResult(auth);
-    if (result?.user) {
-      sessionStorage.removeItem('shift-clock-google-redirect-pending');
-      localStorage.setItem('shift-clock-google-connected', '1');
-      setCloudMessage('✓ התחברת ל-Google. מסנכרן את הגיבוי…');
-      setTimeout(() => location.reload(), 900);
-      return;
-    }
-    if (pending) {
-      // If Firebase restored the authenticated user but returned no explicit result,
-      // still treat the redirect as successful.
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (auth.currentUser && !auth.currentUser.isAnonymous) {
-        sessionStorage.removeItem('shift-clock-google-redirect-pending');
-        localStorage.setItem('shift-clock-google-connected', '1');
-        setCloudMessage('✓ התחברת ל-Google. הגיבוי הקבוע פעיל.');
-        setTimeout(() => location.reload(), 900);
-      } else {
-        sessionStorage.removeItem('shift-clock-google-redirect-pending');
-        setCloudMessage('ההתחברות חזרה לאתר אבל לא הושלמה. נסה שוב.', true);
-      }
-    }
-  } catch (err) {
-    sessionStorage.removeItem('shift-clock-google-redirect-pending');
-    setCloudMessage(authErrorText(err), true);
-  }
-}
-
-// Capture the backup button before push-client.js can run its popup handler.
+// GitHub Pages is not Firebase Hosting. Firebase's current guidance for sites
+// hosted elsewhere is to prefer popup auth unless the redirect helper is
+// proxied/self-hosted. Now that liadbenaharon.github.io is authorized, use one
+// direct popup from the user's click and sign in to the Google account directly.
 document.addEventListener('click', async event => {
   const button = event.target?.closest?.('#v59GoogleBtn');
   if (!button) return;
@@ -87,25 +62,32 @@ document.addEventListener('click', async event => {
   event.stopPropagation();
   event.stopImmediatePropagation();
   button.disabled = true;
-  setCloudMessage('מעביר להתחברות מאובטחת עם Google…');
+  setCloudMessage('פותח התחברות עם Google…');
   try {
-    const { auth, authMod } = await getRedirectAuth();
+    const { auth, authMod } = await getPopupAuth();
     const provider = new authMod.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    sessionStorage.setItem('shift-clock-google-redirect-pending', '1');
-    await authMod.signInWithRedirect(auth, provider);
+    const result = await authMod.signInWithPopup(auth, provider);
+    if (!result?.user) throw new Error('Google sign-in returned no user');
+    localStorage.setItem('shift-clock-google-connected', '1');
+    setCloudMessage('✓ התחברת ל-Google. מסנכרן את הגיבוי…');
+    // push-client.js listens to the same Firebase Auth state and will upload
+    // the existing local shift data under the Google user UID.
+    setTimeout(() => location.reload(), 1000);
   } catch (err) {
-    sessionStorage.removeItem('shift-clock-google-redirect-pending');
+    console.error('Google backup direct popup failed:', err);
     setCloudMessage(authErrorText(err), true);
+    button.disabled = false;
   }
 }, true);
 
-// Keep exact popup diagnostics as a fallback for older cached code.
+// Keep exact diagnostics for any older cached push-client popup handler.
 const originalConsoleError = console.error.bind(console);
 console.error = (...args) => {
   originalConsoleError(...args);
   try {
-    if (String(args[0] || '').includes('Google backup sign-in failed')) {
+    const head = String(args[0] || '');
+    if (head.includes('Google backup sign-in failed')) {
       const err = args.find(v => v && typeof v === 'object' && (v.code || v.message));
       setCloudMessage(authErrorText(err), true);
     }
@@ -145,7 +127,6 @@ async function checkForAppUpdate(force = false) {
 }
 
 applyDisplayedVersion(APP_VERSION);
-finishRedirectLogin();
 checkForAppUpdate();
 setTimeout(checkForAppUpdate, 2500);
 setInterval(checkForAppUpdate, 30000);
