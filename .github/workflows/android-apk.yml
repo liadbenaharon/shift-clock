@@ -9,9 +9,11 @@ on:
       - '*.js'
       - '*.css'
       - 'manifest.json'
+      - 'version.json'
       - 'capacitor.config.ts'
       - 'package.json'
       - 'package-lock.json'
+      - 'scripts/prepare-android-web.mjs'
       - '.github/workflows/android-apk.yml'
 
 permissions:
@@ -20,34 +22,39 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Create Android project
-        run: npx cap add android
-
-      - name: Sync web app
-        run: npx cap sync android
-
-      - uses: actions/setup-java@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
-      - name: Upload installable APK
+      - name: Prepare app web files
+        run: npm run android:web
+
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build installable debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: shift-clock-android-debug
