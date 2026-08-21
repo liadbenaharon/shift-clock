@@ -38,6 +38,38 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Keep stable debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: shift-clock-android-debug-keystore-v1
+
+      - name: Create debug signing key if needed
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Export Firebase SHA-1 fingerprint
+        shell: bash
+        run: |
+          keytool -list -v \
+            -alias androiddebugkey \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            | tee android-sha1.txt
+          grep 'SHA1:' android-sha1.txt || true
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
@@ -54,10 +86,12 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK and SHA-1
         uses: actions/upload-artifact@v4
         with:
           name: shift-clock-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android-sha1.txt
           if-no-files-found: error
           retention-days: 30
