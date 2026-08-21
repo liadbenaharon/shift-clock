@@ -13,7 +13,20 @@
           "package_name": "com.liad.shiftclock"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "470768596231-n4osp70gcvvrifnii5kkcehqrp01imkh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.liad.shiftclock",
+            "certificate_hash": "5f0eb677796534fcfc32cae8f5591717f0ffd031"
+          }
+        },
+        {
+          "client_id": "470768596231-30g852o9h5sfluc8j7iekp4nam3c94jk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBdHlN0njQsNo7iY27X_I-bRYcWpljbyXY"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "470768596231-30g852o9h5sfluc8j7iekp4nam3c94jk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
