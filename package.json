@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "send-reminders": "node scripts/send-shift-reminders.mjs",
+    "android:web": "node scripts/prepare-android-web.mjs",
     "android:add": "npx cap add android",
-    "android:sync": "npx cap sync android",
+    "android:sync": "npm run android:web && npx cap sync android",
     "android:open": "npx cap open android"
   },
   "dependencies": {
