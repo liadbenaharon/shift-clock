@@ -41,6 +41,28 @@ function setStatus(message, isError = false) {
   }
 }
 
+async function signInGoogleWithFallback(nativeAuth) {
+  // Credential Manager can return "No credentials available" on some Android/Samsung
+  // devices even when the Google account picker is shown. The plugin officially
+  // supports disabling it, so use the legacy Google sign-in flow as an automatic fallback.
+  try {
+    return await nativeAuth.signInWithGoogle({ useCredentialManager: true });
+  } catch (err) {
+    const code = String(err?.code || err?.message || '');
+    const shouldFallback =
+      code.includes('No credentials available') ||
+      code.includes('NO_CREDENTIAL') ||
+      code.includes('GetCredential') ||
+      code.includes('Credential Manager');
+
+    if (!shouldFallback) throw err;
+
+    console.warn('Credential Manager failed; retrying Google sign-in without it:', err);
+    setStatus('מנסה שיטת התחברות Google חלופית…');
+    return await nativeAuth.signInWithGoogle({ useCredentialManager: false });
+  }
+}
+
 async function nativeGoogleBackup() {
   const btn = document.getElementById('v59GoogleBtn');
   if (btn) btn.disabled = true;
@@ -50,9 +72,7 @@ async function nativeGoogleBackup() {
     const nativeAuth = getNativeFirebaseAuth();
     if (!nativeAuth?.signInWithGoogle) throw new Error('native-auth-plugin-unavailable');
 
-    // Firebase OAuth/SHA-1 is now configured. Prefer Android Credential Manager,
-    // which is the current Google sign-in path supported by plugin v7.
-    const result = await nativeAuth.signInWithGoogle({ useCredentialManager: true });
+    const result = await signInGoogleWithFallback(nativeAuth);
     const idToken = result?.credential?.idToken;
     const accessToken = result?.credential?.accessToken;
     if (!idToken && !accessToken) throw new Error('native-google-credential-missing');
@@ -84,8 +104,9 @@ async function nativeGoogleBackup() {
     const code = String(err?.code || err?.message || 'unknown');
     let message = `ההתחברות באפליקציה נכשלה (${code}).`;
     if (code.includes('10') || code.includes('12500') || code.includes('DEVELOPER_ERROR')) message = 'Google Sign-In עדיין לא מאושר לחתימת האפליקציה (שגיאה 10).';
-    if (code.includes('cancel') || code.includes('CANCELED')) message = 'ההתחברות ל-Google בוטלה.';
-    if (code.includes('No credentials available')) message = 'Google Credential Manager לא מצא הרשאת התחברות זמינה. נסה שוב; אם זה נמשך נבדוק את הגדרת OAuth ב-Google Cloud.';
+    if (code.toLowerCase().includes('cancel')) message = 'ההתחברות ל-Google בוטלה.';
+    if (code.includes('No credentials available')) message = 'Google לא החזיר פרטי התחברות. ודא שחשבון Google פעיל במכשיר ונסה שוב.';
+    if (code.includes('permission-denied')) message = 'ההתחברות הצליחה, אבל אין הרשאה לשמור את הגיבוי ב-Firestore.';
     setStatus(message, true);
     if (btn) btn.disabled = false;
   }
