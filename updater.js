@@ -1,4 +1,4 @@
-const APP_VERSION = 'v6.1';
+const APP_VERSION = 'v6.2';
 let checkingUpdate = false;
 let reloadingForUpdate = false;
 
@@ -24,9 +24,7 @@ function authErrorText(err) {
   return `שגיאת התחברות: ${code}${message ? ` — ${message}` : ''}`;
 }
 
-// v6.1: On mobile use Firebase redirect auth instead of a popup. Mobile
-// browsers often open the popup for a moment and then close it immediately.
-const firebaseConfigV61 = {
+const firebaseConfigV62 = {
   apiKey: 'AIzaSyDDEElCF6iH35N9TYo7uqW0Oafm_E1E1Sw',
   authDomain: 'shift-clock-19c2d.firebaseapp.com',
   projectId: 'shift-clock-19c2d',
@@ -41,35 +39,52 @@ async function getRedirectAuth() {
   redirectAuthReady = (async () => {
     const appMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js');
     const authMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js');
-    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV61);
+    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV62);
     const auth = authMod.getAuth(app);
+    await authMod.setPersistence(auth, authMod.browserLocalPersistence);
     return { auth, authMod };
   })();
   return redirectAuthReady;
 }
 
 async function finishRedirectLogin() {
+  const pending = sessionStorage.getItem('shift-clock-google-redirect-pending') === '1';
   try {
     const { auth, authMod } = await getRedirectAuth();
     const result = await authMod.getRedirectResult(auth);
     if (result?.user) {
       sessionStorage.removeItem('shift-clock-google-redirect-pending');
-      setCloudMessage('✓ מחובר ל-Google. הגיבוי הקבוע פעיל.');
-      setTimeout(() => location.reload(), 700);
+      localStorage.setItem('shift-clock-google-connected', '1');
+      setCloudMessage('✓ התחברת ל-Google. מסנכרן את הגיבוי…');
+      setTimeout(() => location.reload(), 900);
+      return;
+    }
+    if (pending) {
+      // If Firebase restored the authenticated user but returned no explicit result,
+      // still treat the redirect as successful.
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (auth.currentUser && !auth.currentUser.isAnonymous) {
+        sessionStorage.removeItem('shift-clock-google-redirect-pending');
+        localStorage.setItem('shift-clock-google-connected', '1');
+        setCloudMessage('✓ התחברת ל-Google. הגיבוי הקבוע פעיל.');
+        setTimeout(() => location.reload(), 900);
+      } else {
+        sessionStorage.removeItem('shift-clock-google-redirect-pending');
+        setCloudMessage('ההתחברות חזרה לאתר אבל לא הושלמה. נסה שוב.', true);
+      }
     }
   } catch (err) {
-    if (sessionStorage.getItem('shift-clock-google-redirect-pending') === '1') {
-      sessionStorage.removeItem('shift-clock-google-redirect-pending');
-      setCloudMessage(authErrorText(err), true);
-    }
+    sessionStorage.removeItem('shift-clock-google-redirect-pending');
+    setCloudMessage(authErrorText(err), true);
   }
 }
 
-// Capture the Google-backup button before push-client's popup handler.
+// Capture the backup button before push-client.js can run its popup handler.
 document.addEventListener('click', async event => {
   const button = event.target?.closest?.('#v59GoogleBtn');
   if (!button) return;
   event.preventDefault();
+  event.stopPropagation();
   event.stopImmediatePropagation();
   button.disabled = true;
   setCloudMessage('מעביר להתחברות מאובטחת עם Google…');
