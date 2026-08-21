@@ -1,4 +1,4 @@
-const APP_VERSION = 'v6.3';
+const APP_VERSION = 'v6.4';
 let checkingUpdate = false;
 let reloadingForUpdate = false;
 
@@ -28,9 +28,12 @@ function authErrorText(err) {
   return `שגיאת התחברות: ${code}${message ? ` — ${message}` : ''}`;
 }
 
-const firebaseConfigV63 = {
+// v6.4: Keep the auth helper on the same first-party origin as the app.
+// For GitHub Pages this avoids opening firebaseapp.com as a third-party helper
+// page that Samsung/Chrome can immediately close or block.
+const firebaseConfigV64 = {
   apiKey: 'AIzaSyDDEElCF6iH35N9TYo7uqW0Oafm_E1E1Sw',
-  authDomain: 'shift-clock-19c2d.firebaseapp.com',
+  authDomain: 'liadbenaharon.github.io',
   projectId: 'shift-clock-19c2d',
   storageBucket: 'shift-clock-19c2d.firebasestorage.app',
   messagingSenderId: '470768596231',
@@ -43,7 +46,7 @@ async function getPopupAuth() {
   popupAuthReady = (async () => {
     const appMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js');
     const authMod = await import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js');
-    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV63);
+    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfigV64);
     const auth = authMod.getAuth(app);
     await authMod.setPersistence(auth, authMod.browserLocalPersistence);
     return { auth, authMod };
@@ -51,10 +54,6 @@ async function getPopupAuth() {
   return popupAuthReady;
 }
 
-// GitHub Pages is not Firebase Hosting. Firebase's current guidance for sites
-// hosted elsewhere is to prefer popup auth unless the redirect helper is
-// proxied/self-hosted. Now that liadbenaharon.github.io is authorized, use one
-// direct popup from the user's click and sign in to the Google account directly.
 document.addEventListener('click', async event => {
   const button = event.target?.closest?.('#v59GoogleBtn');
   if (!button) return;
@@ -71,8 +70,6 @@ document.addEventListener('click', async event => {
     if (!result?.user) throw new Error('Google sign-in returned no user');
     localStorage.setItem('shift-clock-google-connected', '1');
     setCloudMessage('✓ התחברת ל-Google. מסנכרן את הגיבוי…');
-    // push-client.js listens to the same Firebase Auth state and will upload
-    // the existing local shift data under the Google user UID.
     setTimeout(() => location.reload(), 1000);
   } catch (err) {
     console.error('Google backup direct popup failed:', err);
@@ -81,7 +78,6 @@ document.addEventListener('click', async event => {
   }
 }, true);
 
-// Keep exact diagnostics for any older cached push-client popup handler.
 const originalConsoleError = console.error.bind(console);
 console.error = (...args) => {
   originalConsoleError(...args);
