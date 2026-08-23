@@ -50,6 +50,21 @@ function applyV59Dashboard(){
   const refresh=()=>{const state=readLocalState(),startMs=Number(state.activeStart||0),set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};if(!startMs){set('v59Date','—');set('v59Day','—');set('v59Hours','—');set('v59Pay','₪0.00');set('v59Duration','0:00');return;}const start=new Date(startMs),now=new Date(),elapsed=Math.max(0,now.getTime()-startMs),h=Math.floor(elapsed/3600000),m=Math.floor((elapsed%3600000)/60000),pad=n=>String(n).padStart(2,'0'),days=['יום א׳','יום ב׳','יום ג׳','יום ד׳','יום ה׳','יום ו׳','שבת'];set('v59Date',`${pad(start.getDate())}/${pad(start.getMonth()+1)}/${start.getFullYear()}`);set('v59Day',days[start.getDay()]);set('v59Hours',`${pad(start.getHours())}:${pad(start.getMinutes())} - עכשיו`);set('v59Duration',`${h}:${pad(m)}`);const overtime=document.querySelector('[data-live-tag="overtime"]');if(overtime)overtime.style.display=elapsed>=8*3600000?'inline-flex':'none';const evening=document.querySelector('[data-live-tag="evening"]');if(evening)evening.style.display=now.getHours()>=18?'inline-flex':'none';};refresh();setInterval(refresh,1000);
 }
 
+function refreshLiveRateDisplay(){
+  const state=readLocalState(),startMs=Number(state.activeStart||0),getInfo=window.shiftClockLiveRateInfo;
+  if(!startMs||typeof getInfo!=='function'){
+    document.querySelectorAll('[data-live-tag="overtime"],[data-live-tag="evening"]').forEach(tag=>{tag.style.display='none';});
+    return;
+  }
+  const info=getInfo(startMs,Date.now(),Number(state.rate||0),'auto'),badge=document.getElementById('weekendBadge'),text=document.getElementById('weekendBadgeText');
+  if(badge){badge.classList.toggle('active',info.mult>1||info.evening);badge.dataset.liveRate=String(info.mult);}
+  if(text)text.textContent=`${info.label} · ₪${info.hourlyRate.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2})}/שעה`;
+  const overtime=document.querySelector('[data-live-tag="overtime"]'),evening=document.querySelector('[data-live-tag="evening"]');
+  if(overtime){overtime.style.display=info.otMult>1?'inline-flex':'none';overtime.textContent=info.otMult===1.5?'◔ שעות נוספות 150%':'◔ שעות נוספות 125%';}
+  if(evening)evening.style.display=info.evening?'inline-flex':'none';
+}
+setInterval(refreshLiveRateDisplay,1000);
+
 function updateCloudStatus(msg,isError=false){const e=document.getElementById('v59CloudStatus');if(e){e.textContent=msg;e.classList.toggle('v59-error',isError);}const b=document.getElementById('v59GoogleBtn');if(b&&isGoogleUser(auth.currentUser)){b.textContent='✓ מחובר ל-Google — הגיבוי קבוע';b.disabled=true;}else if(b){b.textContent='התחבר עם Google לגיבוי קבוע';b.disabled=false;}}
 function updateNotificationHelp(){const label=document.querySelector('label[for="settingsNotify"]');if(label){const first=Array.from(label.childNodes).find(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim());if(first)first.textContent='\n        🔔 התראה אם משמרת נשארה פתוחה יותר מ־8 שעות ו־30 דקות\n        ';const d=label.querySelector('div');if(d)d.textContent=isIos()&&!isStandalone()?'באייפון: יש להוסיף את האתר למסך הבית, לפתוח משם ולאשר התראות.':'ההתראה נשלחת ב-Push ויכולה להגיע גם כשהאפליקציה סגורה.';}}
 async function ensureAnonymousUser(){if(currentUser)return currentUser;if(auth.currentUser){currentUser=auth.currentUser;return currentUser;}const c=await signInAnonymously(auth);currentUser=c.user;return currentUser;}
@@ -64,6 +79,6 @@ function installTestNotificationHandler(){const button=document.getElementById('
 async function syncActiveShift(){if(syncRunning)return;syncRunning=true;try{const state=readLocalState(),activeStart=state.activeStart?Number(state.activeStart):null,notifyEnabled=!!state.notifyEnabled;if(!notifyEnabled){if(currentUser)await deleteDoc(doc(db,ACTIVE_COLLECTION,currentUser.uid)).catch(()=>{});lastObservedStart=activeStart;return;}const user=auth.currentUser||await ensureAnonymousUser(),ref=doc(db,ACTIVE_COLLECTION,user.uid);if(!activeStart){await deleteDoc(ref).catch(()=>{});lastObservedStart=null;return;}const token=await ensurePushToken();if(!token){lastObservedStart=activeStart;return;}const existing=await getDoc(ref),data=existing.exists()?existing.data():null,same=data&&Number(data.startedAtMs)===activeStart;if(same)await setDoc(ref,{token,remindAtMs:activeStart+REMINDER_DELAY_MS,notificationSent:false,updatedAt:serverTimestamp(),platform:isIos()?'ios-web':'web'},{merge:true});else await setDoc(ref,{uid:user.uid,token,startedAtMs:activeStart,remindAtMs:activeStart+REMINDER_DELAY_MS,notificationSent:false,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),platform:isIos()?'ios-web':'web'});lastObservedStart=activeStart;}catch(err){console.warn('Push reminder sync failed:',err);}finally{syncRunning=false;}}
 async function refreshIfNeeded(){const state=readLocalState(),start=state.activeStart?Number(state.activeStart):null;if(start!==lastObservedStart||state.notifyEnabled)await syncActiveShift();}
 
-applyV59Dashboard();updateNotificationHelp();installTestNotificationHandler();
+applyV59Dashboard();refreshLiveRateDisplay();updateNotificationHelp();installTestNotificationHandler();
 onAuthStateChanged(auth,user=>{currentUser=user||null;if(user){backupInitialized=false;lastBackupJson=null;initializeCloudBackup();refreshIfNeeded();}else ensureAnonymousUser().then(()=>{initializeCloudBackup();refreshIfNeeded();});});
 setInterval(syncCloudBackup,BACKUP_INTERVAL_MS);setInterval(refreshIfNeeded,2500);window.addEventListener('focus',()=>{refreshIfNeeded();syncCloudBackup();});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refreshIfNeeded();syncCloudBackup();}});setTimeout(refreshIfNeeded,600);setTimeout(syncCloudBackup,1200);
