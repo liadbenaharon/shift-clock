@@ -1,4 +1,4 @@
-const APP_VERSION = 'v7.9';
+const APP_VERSION = 'v8.0';
 const FIREBASE_HOST = 'shift-clock-19c2d.web.app';
 const FIREBASE_URL = `https://${FIREBASE_HOST}/`;
 const STORAGE_KEY = 'ilShiftTrackerData_v1';
