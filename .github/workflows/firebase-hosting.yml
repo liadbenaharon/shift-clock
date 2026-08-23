@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Stamp current version into initial HTML
+      - name: Stamp current version everywhere in initial HTML
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -34,19 +34,13 @@ jobs:
           const { version } = JSON.parse(fs.readFileSync('version.json', 'utf8'));
           let html = fs.readFileSync('index.html', 'utf8');
 
-          // Keep the very first paint in sync with version.json so a refresh never
-          // flashes an old hard-coded version before updater.js runs.
-          html = html.replace(
-            /(<title>[^<]*?)v\d+\.\d+(<\/title>)/i,
-            `$1${version}$2`
-          );
-          html = html.replace(
-            /(<header\b[\s\S]*?<h1\b[^>]*>[\s\S]*?<span\b[^>]*>)v\d+\.\d+(<\/span>)/i,
-            `$1${version}$2`
-          );
+          // Replace every literal app-version string in the served HTML, including
+          // any old inline-script value that could briefly overwrite the header
+          // during refresh before updater.js restores the current version.
+          html = html.replace(/v\d+\.\d+/g, version);
 
           fs.writeFileSync('index.html', html);
-          console.log(`Stamped ${version} into initial HTML`);
+          console.log(`Stamped ${version} into every HTML version marker`);
           NODE
 
       - name: Install Firebase CLI
