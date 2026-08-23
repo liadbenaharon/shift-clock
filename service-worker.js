@@ -14,6 +14,7 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+const APP_VERSION = 'v7.2';
 const APP_FILES = new Set(['/shift-clock/', '/shift-clock/index.html', '/shift-clock/push-client.js', '/shift-clock/updater.js', '/shift-clock/version.json', '/shift-clock/manifest.json']);
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -56,8 +57,13 @@ self.addEventListener('fetch', event => {
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('text/html')) return response;
       let html = await response.text();
+
+      // Stamp the current version into the HTML response before the browser paints it.
+      // This prevents an old hard-coded version from flashing during refresh.
+      html = html.replace(/v\d+\.\d+/g, APP_VERSION);
+
       if (!html.includes('updater.js')) {
-        html = html.replace('</body>', '<script src="./updater.js?_sw=5.6"></script></body>');
+        html = html.replace('</body>', `<script src="./updater.js?_sw=${APP_VERSION.replace(/^v/, '')}"></script></body>`);
       }
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
