@@ -14,7 +14,6 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-const APP_VERSION = 'v7.2';
 const APP_FILES = new Set(['/shift-clock/', '/shift-clock/index.html', '/shift-clock/push-client.js', '/shift-clock/updater.js', '/shift-clock/version.json', '/shift-clock/manifest.json']);
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -58,12 +57,11 @@ self.addEventListener('fetch', event => {
       if (!contentType.includes('text/html')) return response;
       let html = await response.text();
 
-      // Stamp the current version into the HTML response before the browser paints it.
-      // This prevents an old hard-coded version from flashing during refresh.
-      html = html.replace(/v\d+\.\d+/g, APP_VERSION);
-
+      // Never rewrite the displayed app version here. An older service worker can
+      // remain active briefly during an update, so stamping a version here causes
+      // the previous release number to flash before the new page scripts load.
       if (!html.includes('updater.js')) {
-        html = html.replace('</body>', `<script src="./updater.js?_sw=${APP_VERSION.replace(/^v/, '')}"></script></body>`);
+        html = html.replace('</body>', `<script src="./updater.js?_sw=${Date.now()}"></script></body>`);
       }
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -74,7 +72,6 @@ self.addEventListener('fetch', event => {
   })());
 });
 
-// Handle local test notifications requested by the app UI.
 self.addEventListener('message', event => {
   const data = event.data || {};
   if (data.type === 'SKIP_WAITING') {
