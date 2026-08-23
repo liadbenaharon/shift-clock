@@ -26,21 +26,22 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Stamp current version everywhere in initial HTML
+      - name: Stamp current version into served files
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
 
           const { version } = JSON.parse(fs.readFileSync('version.json', 'utf8'));
+
           let html = fs.readFileSync('index.html', 'utf8');
-
-          // Replace every literal app-version string in the served HTML, including
-          // any old inline-script value that could briefly overwrite the header
-          // during refresh before updater.js restores the current version.
           html = html.replace(/v\d+\.\d+/g, version);
-
           fs.writeFileSync('index.html', html);
-          console.log(`Stamped ${version} into every HTML version marker`);
+
+          let updater = fs.readFileSync('updater.js', 'utf8');
+          updater = updater.replace(/const APP_VERSION = 'v\d+\.\d+';/, `const APP_VERSION = '${version}';`);
+          fs.writeFileSync('updater.js', updater);
+
+          console.log(`Stamped ${version} into HTML and updater.js`);
           NODE
 
       - name: Install Firebase CLI
