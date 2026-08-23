@@ -26,6 +26,29 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Stamp current version into initial HTML
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const { version } = JSON.parse(fs.readFileSync('version.json', 'utf8'));
+          let html = fs.readFileSync('index.html', 'utf8');
+
+          // Keep the very first paint in sync with version.json so a refresh never
+          // flashes an old hard-coded version before updater.js runs.
+          html = html.replace(
+            /(<title>[^<]*?)v\d+\.\d+(<\/title>)/i,
+            `$1${version}$2`
+          );
+          html = html.replace(
+            /(<header\b[\s\S]*?<h1\b[^>]*>[\s\S]*?<span\b[^>]*>)v\d+\.\d+(<\/span>)/i,
+            `$1${version}$2`
+          );
+
+          fs.writeFileSync('index.html', html);
+          console.log(`Stamped ${version} into initial HTML`);
+          NODE
+
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
 
