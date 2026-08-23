@@ -73,8 +73,8 @@ function refreshNightHistoryTags(){
   document.querySelectorAll('.shift-row').forEach(row=>{
     const badges=row.querySelector('.badges'),shift=state.shifts?.find(item=>String(item.id)===String(row.dataset.id));
     if(!badges||!shift||badges.querySelector('[data-night-history]'))return;
-    const hours=getNightHours(Number(shift.start),Number(shift.end));
-    if(hours>.01){const totalMinutes=Math.round(hours*60),h=Math.floor(totalMinutes/60),m=String(totalMinutes%60).padStart(2,'0');badges.insertAdjacentHTML('afterbegin',`<span class="tag" data-night-history style="background:#24192d;color:#d3a0ec">לילה ${h}:${m} ש'</span>`);}
+    const hours=getNightHours(Number(shift.start),Number(shift.end)),duration=(Number(shift.end)-Number(shift.start))/3600000;
+    if(hours>=2&&duration>7){badges.insertAdjacentHTML('afterbegin','<span class="tag" data-night-history style="background:#24192d;color:#d3a0ec">משמרת לילה · נוספות אחרי 7:00</span>');}
   });
 }
 const historyList=document.getElementById('historyList');if(historyList)new MutationObserver(refreshNightHistoryTags).observe(historyList,{childList:true,subtree:true});
